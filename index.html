@@ -1,0 +1,909 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>連連看生成器</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chiron+GoRound+TC:wght@400;600;800&family=Noto+Sans+TC:wght@400;500;700&display=swap">
+<style>
+/* Layout: notebook desk — pattern library on the left, an A4 worksheet in the middle, settings on the right; stacks to one column on phones. */
+:root {
+  --bg: #e9eef5;
+  --panel: #f8fafd;
+  --ink: #1c2742;
+  --muted: #5b6884;
+  --line: #cdd6e4;
+  --accent: #2b55d6;
+  --accent-soft: #dfe7fc;
+  --marker: #ffd447;
+  --good: #188a5f;
+  --warn: #b5551c;
+  --sheet: #ffffff;
+  --sheet-ink: #1c2742;
+  --shadow: 0 1px 2px rgba(28,39,66,.08), 0 10px 30px -12px rgba(28,39,66,.25);
+  --font-display: "Chiron GoRound TC", "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
+  --font-body: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif;
+  --radius: 14px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111727; --panel: #1a2236; --ink: #e6ebf6; --muted: #9aa6c2; --line: #2e3a55;
+    --accent: #7d9bff; --accent-soft: #24315a; --marker: #ffd447; --good: #4cc995; --warn: #f0a46a;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 12px 30px -12px rgba(0,0,0,.6);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111727; --panel: #1a2236; --ink: #e6ebf6; --muted: #9aa6c2; --line: #2e3a55;
+  --accent: #7d9bff; --accent-soft: #24315a; --marker: #ffd447; --good: #4cc995; --warn: #f0a46a;
+  --shadow: 0 1px 2px rgba(0,0,0,.3), 0 12px 30px -12px rgba(0,0,0,.6);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font: 15px/1.6 var(--font-body);
+  padding-inline: 16px;
+  padding-block: 0 32px;
+}
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+header.top {
+  max-width: 1440px; margin: 0 auto;
+  display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 8px 24px;
+  padding-block: 22px 16px;
+}
+.brand { display: flex; align-items: center; gap: 12px; }
+.brand svg { width: 44px; height: 44px; flex: none; }
+.brand h1 {
+  font-family: var(--font-display); font-weight: 800; font-size: 28px; line-height: 1.1; margin: 0;
+  text-wrap: balance;
+}
+.brand h1 mark { background: linear-gradient(transparent 55%, var(--marker) 55%); color: inherit; padding: 0 2px; }
+.brand p { margin: 2px 0 0; color: var(--muted); font-size: 14px; }
+
+.app {
+  max-width: 1440px; margin: 0 auto;
+  display: grid; gap: 20px;
+  grid-template-columns: 300px minmax(0, 1fr) 290px;
+  grid-template-areas: "lib stage ctrl";
+  align-items: start;
+}
+.panel {
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 16px; min-width: 0;
+}
+.panel h2 {
+  font-family: var(--font-display); font-size: 16px; font-weight: 800; margin: 0 0 10px;
+  display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
+}
+.panel h2 small { font-family: var(--font-body); font-weight: 500; color: var(--muted); font-size: 12px; }
+
+/* Library */
+.library { grid-area: lib; position: sticky; top: calc(env(safe-area-inset-top, 0px) + 12px); max-height: calc(100vh - 24px); display: flex; flex-direction: column; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.chip {
+  border: 1px solid var(--line); background: transparent; border-radius: 999px;
+  padding: 3px 12px; font-size: 13px; color: var(--muted);
+}
+.chip[aria-pressed="true"] { background: var(--ink); color: var(--panel); border-color: var(--ink); }
+.grid {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px;
+  overflow-y: auto; padding: 2px; margin: -2px; flex: 1;
+}
+.tile {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  background: var(--sheet); border: 2px solid transparent; border-radius: 10px;
+  padding: 6px 4px 5px; position: relative; color: var(--sheet-ink);
+}
+.tile svg { width: 100%; aspect-ratio: 1; max-width: 100%; display: block; }
+.tile span { font-size: 13px; font-weight: 500; }
+.tile .no { position: absolute; top: 4px; left: 6px; font-size: 10px; color: #8792aa; font-variant-numeric: tabular-nums; }
+.tile:hover { border-color: var(--line); }
+.tile[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.lib-foot { margin-top: 12px; display: flex; gap: 8px; }
+
+/* Stage */
+.stage { grid-area: stage; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.stage-bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; }
+.seg { display: inline-flex; background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 3px; }
+.seg button {
+  border: 0; background: transparent; padding: 6px 16px; border-radius: 999px; font-weight: 500; color: var(--muted);
+}
+.seg button[aria-pressed="true"] { background: var(--accent); color: #fff; }
+.meta { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.meta b { color: var(--ink); }
+.sheet-wrap { display: flex; justify-content: center; }
+#sheet {
+  width: 100%; max-width: 640px; background: var(--sheet); border-radius: 6px; box-shadow: var(--shadow);
+  aspect-ratio: 210 / 297; overflow: hidden;
+}
+#sheet svg { width: 100%; height: 100%; display: block; }
+.warn {
+  font-size: 13px; color: var(--warn); background: color-mix(in srgb, var(--warn) 12%, transparent);
+  border-radius: 8px; padding: 6px 10px; max-width: 640px; margin: 0 auto; width: 100%;
+}
+
+/* Play mode */
+#play { display: flex; flex-direction: column; gap: 12px; align-items: center; }
+.play-board {
+  width: 100%; max-width: 640px; background: var(--sheet); border-radius: 12px; box-shadow: var(--shadow);
+  position: relative; aspect-ratio: 1; overflow: hidden; touch-action: manipulation;
+}
+.play-board svg { width: 100%; height: 100%; display: block; }
+.play-hud {
+  width: 100%; max-width: 640px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; justify-content: space-between;
+}
+.next-pill {
+  display: inline-flex; align-items: baseline; gap: 6px; background: var(--panel); border: 1px solid var(--line);
+  border-radius: 999px; padding: 4px 14px; font-size: 14px;
+}
+.next-pill b { font-family: var(--font-display); font-size: 22px; color: var(--accent); font-variant-numeric: tabular-nums; min-width: 1.5em; text-align: center; }
+.progress { flex: 1; min-width: 120px; height: 8px; border-radius: 999px; background: var(--line); overflow: hidden; }
+.progress i { display: block; height: 100%; width: 0; background: var(--good); transition: width .2s; }
+.play-actions { display: flex; gap: 8px; }
+.done-card {
+  position: absolute; left: 50%; bottom: 5%; transform: translateX(-50%);
+  background: var(--ink); color: var(--panel); border-radius: 999px; padding: 8px 22px;
+  font-family: var(--font-display); font-weight: 800; font-size: 20px; white-space: nowrap;
+  animation: pop .45s cubic-bezier(.2,1.6,.4,1);
+}
+@keyframes pop { from { transform: translateX(-50%) scale(.6); opacity: 0; } }
+.hit { cursor: pointer; }
+.shake { animation: shake .35s; transform-box: fill-box; transform-origin: center; }
+@keyframes shake { 25% { transform: translateX(-1px); } 75% { transform: translateX(1px); } }
+.pulse { animation: pulse 1s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+@keyframes pulse { 50% { transform: scale(1.9); } }
+.reveal { animation: reveal .8s ease forwards; }
+@keyframes reveal { from { opacity: 0; } to { opacity: 1; } }
+
+/* Controls */
+.controls { grid-area: ctrl; display: flex; flex-direction: column; gap: 18px; }
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field > label, .field > .lbl { font-size: 13px; font-weight: 700; display: flex; justify-content: space-between; align-items: baseline; }
+.field > label output, .field .lbl output { font-family: var(--font-display); font-size: 18px; color: var(--accent); font-variant-numeric: tabular-nums; }
+.field .hint { font-size: 12px; color: var(--muted); }
+input[type="range"] { width: 100%; accent-color: var(--accent); }
+input[type="text"], select {
+  width: 100%; border: 1px solid var(--line); background: var(--sheet); color: var(--sheet-ink);
+  border-radius: 8px; padding: 7px 10px;
+}
+.pills { display: flex; flex-wrap: wrap; gap: 6px; }
+.pills button {
+  border: 1px solid var(--line); background: transparent; border-radius: 8px; padding: 4px 10px; font-size: 13px;
+}
+.pills button[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--ink); font-weight: 700; }
+.switch { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 14px; cursor: pointer; }
+.switch input { width: 40px; height: 22px; accent-color: var(--accent); }
+.btn {
+  border: 1px solid var(--line); background: var(--panel); border-radius: 10px; padding: 8px 14px; font-weight: 500;
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+}
+.btn:hover { border-color: var(--accent); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn.small { padding: 5px 10px; font-size: 13px; }
+.btn-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.btn-row .btn { flex: 1; }
+.divider { border: 0; border-top: 1px dashed var(--line); margin: 0; }
+.note { font-size: 12px; color: var(--muted); margin: 0; }
+
+@media (max-width: 1180px) {
+  .app { grid-template-columns: 280px minmax(0, 1fr); grid-template-areas: "lib stage" "lib ctrl"; }
+}
+@media (max-width: 760px) {
+  .app { grid-template-columns: minmax(0, 1fr); grid-template-areas: "lib" "stage" "ctrl"; }
+  .library { position: static; max-height: none; }
+  .grid { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: 92px; overflow-x: auto; overflow-y: hidden; padding-bottom: 6px; }
+  .brand h1 { font-size: 24px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+@media print {
+  @page { size: A4; margin: 0; }
+  body { background: #fff; padding: 0; }
+  header.top, .library, .controls, .stage-bar, .warn, #play { display: none !important; }
+  .app { display: block; max-width: none; }
+  #sheet { box-shadow: none; border-radius: 0; max-width: none; width: 210mm; height: 297mm; }
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="brand">
+    <svg viewBox="0 0 44 44" aria-hidden="true">
+      <rect x="1" y="1" width="42" height="42" rx="10" fill="var(--accent)"/>
+      <path d="M11 30 L18 13 L26 24 L33 15" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+      <g fill="var(--marker)"><circle cx="11" cy="30" r="3"/><circle cx="18" cy="13" r="3"/><circle cx="26" cy="24" r="3"/><circle cx="33" cy="15" r="3"/></g>
+    </svg>
+    <div>
+      <h1><mark>連連看</mark>生成器</h1>
+      <p>挑一個圖案，調好點數，印成學習單或直接在線上連連看。</p>
+    </div>
+  </div>
+</header>
+
+<main class="app">
+  <aside class="panel library" aria-label="圖案庫">
+    <h2>圖案庫 <small id="libCount">30 種</small></h2>
+    <div class="chips" id="chips" role="group" aria-label="分類"></div>
+    <div class="grid" id="grid"></div>
+    <div class="lib-foot">
+      <button class="btn small" id="randomBtn" type="button" style="flex:1">隨機挑一個</button>
+    </div>
+  </aside>
+
+  <section class="stage" aria-label="預覽">
+    <div class="stage-bar">
+      <div class="seg" role="group" aria-label="模式">
+        <button type="button" id="modeSheet" aria-pressed="true">學習單</button>
+        <button type="button" id="modePlay" aria-pressed="false">線上玩</button>
+      </div>
+      <div class="meta" id="meta"></div>
+    </div>
+    <div id="warn" class="warn" hidden></div>
+    <div id="sheetView" class="sheet-wrap"><div id="sheet"></div></div>
+    <div id="play" hidden>
+      <div class="play-hud">
+        <span class="next-pill">下一個 <b id="nextLabel">1</b></span>
+        <div class="progress" aria-hidden="true"><i id="progressBar"></i></div>
+        <div class="play-actions">
+          <button class="btn small" type="button" id="hintBtn">提示</button>
+          <button class="btn small" type="button" id="undoBtn">復原</button>
+          <button class="btn small" type="button" id="restartBtn">重來</button>
+        </div>
+      </div>
+      <div class="play-board" id="board"></div>
+    </div>
+  </section>
+
+  <aside class="panel controls" aria-label="設定">
+    <div class="field">
+      <label for="dots">點的數量 <output id="dotsOut">40</output></label>
+      <input type="range" id="dots" min="10" max="150" step="1" value="40">
+      <div class="pills" id="presets" role="group" aria-label="難度">
+        <button type="button" data-n="20">簡單 20</button>
+        <button type="button" data-n="40">普通 40</button>
+        <button type="button" data-n="70">進階 70</button>
+        <button type="button" data-n="110">挑戰 110</button>
+      </div>
+      <span class="hint">轉角一定會放點，所以有稜有角的圖案點數下限會高一些。</span>
+    </div>
+
+    <div class="field">
+      <label for="labelMode">數字怎麼數</label>
+      <select id="labelMode">
+        <option value="1">1、2、3、4…</option>
+        <option value="2">2、4、6、8…（兩個一數）</option>
+        <option value="5">5、10、15…（五個一數）</option>
+        <option value="10">10、20、30…（十個一數）</option>
+        <option value="abc">A、B、C…（英文字母）</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <span class="lbl">方向與起點</span>
+      <div class="pills" role="group" aria-label="方向">
+        <button type="button" id="dirCw" aria-pressed="true">順時針</button>
+        <button type="button" id="dirCcw" aria-pressed="false">逆時針</button>
+        <button type="button" id="shuffleStart">換個起點</button>
+      </div>
+    </div>
+
+    <div class="field">
+      <span class="lbl">字與點的大小</span>
+      <div class="pills" role="group" aria-label="大小" id="sizes">
+        <button type="button" data-size="s">小</button>
+        <button type="button" data-size="m" aria-pressed="true">中</button>
+        <button type="button" data-size="l">大</button>
+      </div>
+    </div>
+
+    <hr class="divider">
+
+    <label class="switch" for="showDetails">畫上眼睛、窗戶等細節 <input type="checkbox" id="showDetails" checked></label>
+    <label class="switch" for="showAnswer">顯示答案線 <input type="checkbox" id="showAnswer"></label>
+    <label class="switch" for="showGrid">背景格線 <input type="checkbox" id="showGrid"></label>
+
+    <hr class="divider">
+
+    <div class="field">
+      <label for="title">學習單標題</label>
+      <input type="text" id="title" value="連連看" maxlength="24">
+    </div>
+
+    <div class="field" id="exportBox">
+      <span class="lbl">輸出</span>
+      <div class="btn-row">
+        <button class="btn primary" type="button" id="printBtn">列印學習單</button>
+      </div>
+      <div class="btn-row">
+        <button class="btn" type="button" id="pngBtn">下載 PNG</button>
+        <button class="btn" type="button" id="svgBtn">下載 SVG</button>
+      </div>
+    </div>
+    <p class="note" id="frameNote" hidden>這個預覽視窗不能列印或下載。把 index.html 存到電腦後用瀏覽器開啟，就能列印 A4 學習單、下載 PNG 與 SVG。</p>
+  </aside>
+</main>
+
+<script>
+(() => {
+'use strict';
+const D = Math.PI / 180;
+
+/* ---------- geometry helpers used by the shape definitions ---------- */
+function arc(cx, cy, r, a0, a1, n) {
+  const pts = [];
+  for (let i = 0; i <= n; i++) {
+    const a = a0 + (a1 - a0) * i / n;
+    pts.push([cx + r * Math.cos(a), cy + r * Math.sin(a)]);
+  }
+  return pts;
+}
+function circleIntersect(x1, y1, r1, x2, y2, r2) {
+  const dx = x2 - x1, dy = y2 - y1, d = Math.hypot(dx, dy);
+  const a = (d * d + r1 * r1 - r2 * r2) / (2 * d);
+  const h = Math.sqrt(Math.max(0, r1 * r1 - a * a));
+  const xm = x1 + a * dx / d, ym = y1 + a * dy / d;
+  return [[xm + h * dy / d, ym - h * dx / d], [xm - h * dy / d, ym + h * dx / d]];
+}
+const ang = (c, p) => Math.atan2(p[1] - c[1], p[0] - c[0]);
+// clockwise (on screen) arc from angle a to angle b
+function cwArc(cx, cy, r, a, b) {
+  while (b <= a) b += 2 * Math.PI;
+  const n = Math.max(6, Math.round((b - a) / (4 * D)));
+  return arc(cx, cy, r, a, b, n);
+}
+function joinArcs(list) {
+  const out = [];
+  list.forEach(seg => seg.forEach((p, i) => { if (i === 0 && out.length) return; out.push(p); }));
+  const f = out[0], l = out[out.length - 1];
+  if (Math.hypot(f[0] - l[0], f[1] - l[1]) < 1e-6) out.pop();
+  return out;
+}
+// outline of circles stacked bottom → top (snowman)
+function stackedCircles(cs) {
+  const L = [], R = [];
+  for (let i = 0; i < cs.length - 1; i++) {
+    const [p, q] = circleIntersect(...cs[i], ...cs[i + 1]);
+    L.push(p[0] < q[0] ? p : q); R.push(p[0] < q[0] ? q : p);
+  }
+  const C = c => [c[0], c[1]];
+  const arcs = [];
+  const n = cs.length;
+  arcs.push(cwArc(cs[0][0], cs[0][1], cs[0][2], ang(C(cs[0]), R[0]), ang(C(cs[0]), L[0])));
+  for (let i = 1; i < n - 1; i++) arcs.push(cwArc(cs[i][0], cs[i][1], cs[i][2], ang(C(cs[i]), L[i - 1]), ang(C(cs[i]), L[i])));
+  const t = cs[n - 1];
+  arcs.push(cwArc(t[0], t[1], t[2], ang(C(t), L[n - 2]), ang(C(t), R[n - 2])));
+  for (let i = n - 2; i >= 1; i--) arcs.push(cwArc(cs[i][0], cs[i][1], cs[i][2], ang(C(cs[i]), R[i]), ang(C(cs[i]), R[i - 1])));
+  return joinArcs(arcs);
+}
+
+/* ---------- the 30 patterns ----------
+   d: SVG path (M L H V Q C Z, absolute) or fn: returns closed point list.
+   extras: decorative strokes in the same coordinates (class "x" = line, "xf" = filled). */
+const SHAPES = [
+  { id: 'heart', name: '愛心', cat: '形狀', color: '#f05a7a', n: 30,
+    fn: () => { const p = []; for (let i = 0; i < 240; i++) { const t = i / 240 * 2 * Math.PI;
+      p.push([50 + 16 * Math.pow(Math.sin(t), 3) * 2.6, 48 - (13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t)) * 2.6]); } return p; },
+    extras: '' },
+  { id: 'star', name: '星星', cat: '形狀', color: '#f6bd2b', n: 30,
+    fn: () => { const p = []; for (let i = 0; i < 10; i++) { const r = i % 2 ? 19 : 46, a = -90 * D + i * 36 * D; p.push([50 + r * Math.cos(a), 54 + r * Math.sin(a)]); } return p; },
+    extras: '<circle class="xf" cx="43" cy="52" r="2"/><circle class="xf" cx="57" cy="52" r="2"/><path class="x" d="M45 60 Q50 64 55 60"/>' },
+  { id: 'diamond', name: '鑽石', cat: '形狀', color: '#5cc8e8', n: 25,
+    d: 'M30 15 L70 15 L90 38 L50 90 L10 38 Z',
+    extras: '<path class="x" d="M10 38 L90 38 M30 15 L40 38 L50 15 L60 38 L70 15 M40 38 L50 90 L60 38"/>' },
+  { id: 'fish', name: '小魚', cat: '動物', color: '#ff8a3d', n: 35,
+    d: 'M12 50 C25 25 55 22 70 44 L88 28 L83 50 L88 72 L70 56 C55 78 25 75 12 50 Z',
+    extras: '<circle class="xf" cx="27" cy="46" r="2.6"/><path class="x" d="M38 37 Q45 50 38 63 M48 45 Q51 50 48 55 M56 45 Q59 50 56 55"/><circle class="x" cx="6" cy="38" r="2"/><circle class="x" cx="3" cy="30" r="1.4"/>' },
+  { id: 'cat', name: '貓咪', cat: '動物', color: '#f2a65a', n: 40,
+    d: 'M20 85 C10 70 12 50 20 40 L18 12 L40 30 C46 28 54 28 60 30 L82 12 L80 40 C88 50 90 70 80 85 C65 95 35 95 20 85 Z',
+    extras: '<ellipse class="xf" cx="37" cy="56" rx="3.2" ry="4.5"/><ellipse class="xf" cx="63" cy="56" rx="3.2" ry="4.5"/><path class="xf" d="M47 66 L53 66 L50 70 Z"/><path class="x" d="M50 70 Q46 76 42 73 M50 70 Q54 76 58 73 M38 68 L22 65 M38 71 L22 73 M62 68 L78 65 M62 71 L78 73 M24 22 L28 34 M76 22 L72 34"/>' },
+  { id: 'rabbit', name: '兔子', cat: '動物', color: '#f4b6c8', n: 40,
+    d: 'M30 50 C22 40 20 20 24 8 C30 4 36 20 40 40 C46 38 54 38 60 40 C64 20 70 4 76 8 C80 20 78 40 70 50 C82 60 84 80 72 88 C60 96 40 96 28 88 C16 80 18 60 30 50 Z',
+    extras: '<path class="x" d="M27 14 C26 24 29 34 33 42 M73 14 C74 24 71 34 67 42"/><circle class="xf" cx="40" cy="64" r="3"/><circle class="xf" cx="60" cy="64" r="3"/><path class="xf" d="M47 72 L53 72 L50 75 Z"/><path class="x" d="M50 75 L50 79 Q46 82 43 80 M50 79 Q54 82 57 80"/><circle class="x" cx="33" cy="74" r="3"/><circle class="x" cx="67" cy="74" r="3"/>' },
+  { id: 'bird', name: '小鳥', cat: '動物', color: '#5aa9e6', n: 35,
+    d: 'M22 38 L8 42 L22 46 C20 62 34 76 54 74 L86 84 L78 68 L92 60 L66 56 C66 40 54 26 40 26 C30 26 24 30 22 38 Z',
+    extras: '<circle class="xf" cx="31" cy="38" r="2.4"/><path class="x" d="M40 52 Q54 44 62 60 Q50 66 40 52 Z M46 74 L44 84 M40 86 L48 86 M58 74 L58 84 M54 86 L62 86"/>' },
+  { id: 'butterfly', name: '蝴蝶', cat: '動物', color: '#b07ce8', n: 50,
+    d: 'M50 30 C40 5 5 5 10 35 C12 48 30 50 45 50 C25 55 15 75 28 85 C38 92 48 75 50 62 C52 75 62 92 72 85 C85 75 75 55 55 50 C70 50 88 48 90 35 C95 5 60 5 50 30 Z',
+    extras: '<ellipse class="xf" cx="50" cy="48" rx="2.6" ry="17"/><path class="x" d="M49 33 Q44 18 38 14 M51 33 Q56 18 62 14"/><circle class="x" cx="28" cy="28" r="6"/><circle class="x" cx="72" cy="28" r="6"/><circle class="x" cx="33" cy="72" r="4"/><circle class="x" cx="67" cy="72" r="4"/>' },
+  { id: 'whale', name: '鯨魚', cat: '動物', color: '#4c7fd1', n: 45,
+    d: 'M8 58 C8 36 30 30 52 32 C68 34 76 44 78 52 C80 40 84 30 90 22 C92 32 92 42 88 52 C94 50 100 52 106 56 C98 62 88 64 80 62 C74 74 56 80 38 80 C18 80 8 72 8 58 Z',
+    extras: '<circle class="xf" cx="24" cy="52" r="2.4"/><path class="x" d="M12 62 Q30 66 50 62 M30 30 Q28 20 22 15 M30 30 Q32 18 40 13 M30 30 L30 18"/>' },
+  { id: 'flower', name: '花朵', cat: '自然', color: '#ff7aa8', n: 50,
+    fn: () => { const p = []; for (let i = 0; i < 400; i++) { const t = i / 400 * 2 * Math.PI, r = 19 + 13 * Math.abs(Math.cos(2.5 * (t + 90 * D))); p.push([50 + r * Math.cos(t), 36 + r * Math.sin(t)]); } return p; },
+    extras: '<circle class="x" cx="50" cy="36" r="9"/><path class="x" d="M50 55 Q48 76 50 98 M50 84 Q62 72 74 77 Q63 88 50 84 Z M50 76 Q38 66 28 71 Q38 80 50 76 Z"/>' },
+  { id: 'tree', name: '聖誕樹', cat: '自然', color: '#2fa36b', n: 40,
+    d: 'M50 5 L68 30 L60 30 L78 52 L68 52 L88 75 L56 75 L56 92 L44 92 L44 75 L12 75 L32 52 L22 52 L40 30 L32 30 Z',
+    extras: '<circle class="xf" cx="46" cy="24" r="2"/><circle class="xf" cx="56" cy="42" r="2"/><circle class="xf" cx="40" cy="46" r="2"/><circle class="xf" cx="62" cy="64" r="2"/><circle class="xf" cx="34" cy="66" r="2"/><circle class="xf" cx="50" cy="60" r="2"/>' },
+  { id: 'apple', name: '蘋果', cat: '自然', color: '#e8473f', n: 35,
+    d: 'M50 28 C40 18 14 20 14 48 C14 72 32 92 42 90 C46 89 54 89 58 90 C68 92 86 72 86 48 C86 20 60 18 50 28 Z',
+    extras: '<path class="x" d="M50 28 Q50 16 56 8 M54 18 Q66 8 76 14 Q64 24 54 18 Z M26 42 Q24 52 28 60"/>' },
+  { id: 'leaf', name: '葉子', cat: '自然', color: '#7cc04b', n: 30,
+    d: 'M15 85 C15 40 45 12 88 12 C88 55 60 85 15 85 Z',
+    extras: '<path class="x" d="M15 85 L8 92 M15 85 L78 22 M35 65 L33 48 M35 65 L52 67 M52 48 L51 34 M52 48 L66 49"/>' },
+  { id: 'mushroom', name: '蘑菇', cat: '自然', color: '#e2463f', n: 40,
+    d: 'M10 50 C10 20 30 8 50 8 C70 8 90 20 90 50 C80 54 70 54 62 52 L64 86 Q64 92 58 92 L42 92 Q36 92 36 86 L38 52 C30 54 20 54 10 50 Z',
+    extras: '<circle class="x" cx="30" cy="32" r="6"/><circle class="x" cx="52" cy="22" r="7"/><circle class="x" cx="72" cy="34" r="5"/><circle class="x" cx="44" cy="42" r="3"/><circle class="xf" cx="45" cy="68" r="1.6"/><circle class="xf" cx="55" cy="68" r="1.6"/><path class="x" d="M46 75 Q50 78 54 75"/>' },
+  { id: 'moon', name: '月亮', cat: '自然', color: '#f7cf4a', n: 30,
+    fn: () => {
+      const o = [50, 50, 42], c = [68, 40, 36];
+      const [p, q] = circleIntersect(...o, ...c);
+      const up = p[1] < q[1] ? p : q, lo = p[1] < q[1] ? q : p;
+      const norm = a => (a + 2 * Math.PI) % (2 * Math.PI);
+      const outer = cwArc(o[0], o[1], o[2], ang(o, lo), ang(o, up));
+      const a0 = norm(ang(c, up)), a1 = norm(ang(c, lo));
+      const inner = arc(c[0], c[1], c[2], a0, a1, Math.round(Math.abs(a0 - a1) / (4 * D)));
+      return joinArcs([outer, inner]);
+    },
+    extras: '<circle class="x" cx="24" cy="54" r="4"/><circle class="x" cx="38" cy="76" r="3"/><circle class="x" cx="30" cy="34" r="2.4"/>' },
+  { id: 'sun', name: '太陽', cat: '自然', color: '#ffb02e', n: 40,
+    fn: () => {
+      const segs = [];
+      for (let i = 0; i < 10; i++) {
+        const t = -90 * D + i * 36 * D;
+        segs.push([[50 + 27 * Math.cos(t - 9 * D), 50 + 27 * Math.sin(t - 9 * D)], [50 + 46 * Math.cos(t), 50 + 46 * Math.sin(t)]]);
+        segs.push(arc(50, 50, 27, t + 9 * D, t + 27 * D, 5));
+      }
+      return joinArcs(segs);
+    },
+    extras: '<circle class="xf" cx="42" cy="46" r="2.4"/><circle class="xf" cx="58" cy="46" r="2.4"/><path class="x" d="M40 55 Q50 64 60 55"/>' },
+  { id: 'cloud', name: '雲朵', cat: '自然', color: '#9cc9f0', n: 35,
+    d: 'M20 70 C8 70 6 54 18 50 C16 36 32 30 40 38 C44 22 66 20 70 36 C82 32 94 44 86 56 C94 62 88 72 80 70 Z',
+    extras: '<path class="x" d="M30 80 L27 88 M44 80 L41 88 M58 80 L55 88 M72 80 L69 88"/><circle class="xf" cx="42" cy="54" r="2"/><circle class="xf" cx="60" cy="54" r="2"/><path class="x" d="M46 60 Q51 64 56 60"/>' },
+  { id: 'lightning', name: '閃電', cat: '自然', color: '#ffd02b', n: 22,
+    d: 'M58 5 L22 52 L46 52 L36 95 L80 40 L54 40 L68 5 Z', extras: '' },
+  { id: 'house', name: '房子', cat: '生活', color: '#e9875a', n: 30,
+    d: 'M20 90 L20 50 L10 50 L50 15 L66 29 L66 18 L74 18 L74 36 L90 50 L80 50 L80 90 Z',
+    extras: '<path class="x" d="M43 90 L43 68 L57 68 L57 90"/><circle class="xf" cx="54" cy="80" r="1.2"/><rect class="x" x="26" y="58" width="11" height="11"/><rect class="x" x="63" y="58" width="11" height="11"/><path class="x" d="M31.5 58 L31.5 69 M26 63.5 L37 63.5 M68.5 58 L68.5 69 M63 63.5 L74 63.5"/><circle class="x" cx="50" cy="40" r="5"/>' },
+  { id: 'castle', name: '城堡', cat: '生活', color: '#a79ad8', n: 50,
+    d: 'M10 90 L10 30 L16 30 L16 36 L22 36 L22 30 L28 30 L28 50 L38 50 L38 44 L44 44 L44 50 L56 50 L56 44 L62 44 L62 50 L72 50 L72 30 L78 30 L78 36 L84 36 L84 30 L90 30 L90 90 Z',
+    extras: '<path class="x" d="M42 90 L42 74 Q50 64 58 74 L58 90 M19 36 L19 16 L28 20 L19 24 M81 36 L81 16 L90 20 L81 24"/><rect class="x" x="16" y="50" width="6" height="10" rx="3"/><rect class="x" x="78" y="50" width="6" height="10" rx="3"/>' },
+  { id: 'sailboat', name: '帆船', cat: '生活', color: '#ef6b57', n: 35,
+    d: 'M10 70 L46 70 L46 64 L20 64 L46 20 L46 8 L50 8 L50 14 L84 62 L50 62 L50 70 L90 70 L78 88 L22 88 Z',
+    extras: '<path class="x" d="M4 95 Q14 90 24 95 Q34 100 44 95 Q54 90 64 95 Q74 100 84 95 Q90 92 96 95"/><circle class="x" cx="34" cy="78" r="3"/><circle class="x" cx="50" cy="78" r="3"/><circle class="x" cx="66" cy="78" r="3"/>' },
+  { id: 'rocket', name: '火箭', cat: '生活', color: '#e9e4f2', n: 40,
+    d: 'M50 5 C62 15 66 30 64 55 L78 72 L78 82 L64 74 L60 82 L40 82 L36 74 L22 82 L22 72 L36 55 C34 30 38 15 50 5 Z',
+    extras: '<circle class="x" cx="50" cy="38" r="6"/><path class="x" d="M40 20 L60 20 M44 86 Q50 100 56 86 M47 86 Q50 94 53 86"/>' },
+  { id: 'balloon', name: '熱氣球', cat: '生活', color: '#f2735f', n: 45,
+    d: 'M50 8 C74 8 88 24 86 42 C84 58 66 66 58 72 L60 82 L62 82 L62 94 L38 94 L38 82 L40 82 L42 72 C34 66 16 58 14 42 C12 24 26 8 50 8 Z',
+    extras: '<path class="x" d="M50 8 Q34 40 44 72 M50 8 Q66 40 56 72 M38 88 L62 88"/>' },
+  { id: 'car', name: '汽車', cat: '生活', color: '#e8473f', n: 45,
+    d: 'M8 70 L8 54 C8 50 12 48 18 48 L28 48 L38 32 C40 30 42 30 44 30 L66 30 C70 30 72 32 74 34 L84 48 L88 48 C92 48 94 52 94 56 L94 70 L82 70 C82 58 64 58 64 70 L36 70 C36 58 18 58 18 70 Z',
+    extras: '<circle class="x" cx="27" cy="70" r="7"/><circle class="xf" cx="27" cy="70" r="2.2"/><circle class="x" cx="73" cy="70" r="7"/><circle class="xf" cx="73" cy="70" r="2.2"/><path class="x" d="M33 47 L41 35 L54 35 L54 47 Z M58 35 L68 35 L76 47 L58 47 Z M48 54 L52 54"/>' },
+  { id: 'umbrella', name: '雨傘', cat: '生活', color: '#4fb6c7', n: 40,
+    d: 'M8 50 C10 22 30 10 50 10 C70 10 90 22 92 50 Q83 42 73 50 Q63 42 53 50 L53 82 Q53 92 44 92 Q35 92 35 84 L39 84 Q39 88 44 88 Q49 88 49 82 L49 50 Q38 42 27 50 Q17 42 8 50 Z',
+    extras: '<path class="x" d="M50 10 Q30 24 27 50 M50 10 Q70 24 73 50 M50 10 L50 6"/>' },
+  { id: 'bell', name: '鈴鐺', cat: '生活', color: '#f6c33b', n: 35,
+    d: 'M50 10 C30 10 26 30 26 50 C26 64 20 72 12 78 L88 78 C80 72 74 64 74 50 C74 30 70 10 50 10 Z',
+    extras: '<circle class="x" cx="50" cy="6.5" r="3.5"/><circle class="xf" cx="50" cy="84" r="5"/><path class="x" d="M27 58 Q50 64 73 58 M36 30 Q34 40 35 48"/>' },
+  { id: 'crown', name: '皇冠', cat: '生活', color: '#f6c33b', n: 30,
+    d: 'M12 80 L8 30 L30 52 L50 18 L70 52 L92 30 L88 80 Z',
+    extras: '<path class="x" d="M12 68 L88 68"/><circle class="xf" cx="30" cy="74" r="2.4"/><circle class="xf" cx="50" cy="74" r="2.4"/><circle class="xf" cx="70" cy="74" r="2.4"/><circle class="x" cx="50" cy="50" r="4"/>' },
+  { id: 'cupcake', name: '杯子蛋糕', cat: '生活', color: '#f59ac0', n: 45,
+    d: 'M20 50 C10 50 12 36 22 36 C22 22 36 18 42 22 C46 10 60 10 62 22 C70 18 82 24 78 36 C88 36 90 50 80 50 L72 90 L28 90 Z',
+    extras: '<path class="x" d="M38 50 L40 90 M50 50 L50 90 M62 50 L60 90 M30 34 L33 36 M46 30 L48 33 M62 32 L65 31 M38 42 L40 44 M56 42 L59 41 M70 42 L72 44"/>' },
+  { id: 'icecream', name: '冰淇淋', cat: '生活', color: '#f4a3c0', n: 40,
+    d: 'M26 46 C14 46 14 28 28 28 C28 12 50 6 58 18 C70 12 86 22 78 34 C88 38 84 48 74 46 L50 94 Z',
+    extras: '<path class="x" d="M34 58 L66 58 M40 70 L60 70 M45 82 L55 82 M34 50 L56 92 M50 50 L64 62 M66 50 L44 92 M50 50 L36 62"/><circle class="xf" cx="54" cy="10" r="3.5"/>' },
+  { id: 'snowman', name: '雪人', cat: '生活', color: '#dbe8f7', n: 45,
+    fn: () => stackedCircles([[50, 74, 22], [50, 43, 15], [50, 20, 11]]),
+    extras: '<path class="x" d="M38 10 L62 10 M43 10 L43 0 L57 0 L57 10"/><circle class="xf" cx="46" cy="18" r="1.4"/><circle class="xf" cx="54" cy="18" r="1.4"/><path class="xf" d="M50 21 L59 23 L50 24.5 Z"/><circle class="xf" cx="50" cy="39" r="1.5"/><circle class="xf" cx="50" cy="47" r="1.5"/><circle class="xf" cx="50" cy="66" r="1.7"/><circle class="xf" cx="50" cy="76" r="1.7"/><path class="x" d="M36 40 L20 30 M24 32 L22 26 M64 40 L80 30 M76 32 L78 26"/>' },
+];
+
+const CATS = ['全部', '動物', '自然', '生活', '形狀'];
+
+/* ---------- path parsing and dot placement ---------- */
+function parsePath(d) {
+  const toks = d.match(/[MLHVQCZ]|-?\d*\.?\d+/gi);
+  const pts = [], junc = [];
+  let i = 0, cmd = 'M', cx = 0, cy = 0;
+  const num = () => parseFloat(toks[i++]);
+  const push = (x, y, j) => { pts.push([x, y]); junc.push(j); };
+  const N = 24;
+  while (i < toks.length) {
+    if (/[a-z]/i.test(toks[i])) cmd = toks[i++].toUpperCase();
+    if (cmd === 'Z') continue;
+    if (cmd === 'M' || cmd === 'L') { cx = num(); cy = num(); push(cx, cy, true); if (cmd === 'M') cmd = 'L'; }
+    else if (cmd === 'H') { cx = num(); push(cx, cy, true); }
+    else if (cmd === 'V') { cy = num(); push(cx, cy, true); }
+    else if (cmd === 'Q') {
+      const x1 = num(), y1 = num(), x = num(), y = num();
+      for (let k = 1; k <= N; k++) { const t = k / N, u = 1 - t;
+        push(u * u * cx + 2 * u * t * x1 + t * t * x, u * u * cy + 2 * u * t * y1 + t * t * y, k === N); }
+      cx = x; cy = y;
+    } else if (cmd === 'C') {
+      const x1 = num(), y1 = num(), x2 = num(), y2 = num(), x = num(), y = num();
+      for (let k = 1; k <= N; k++) { const t = k / N, u = 1 - t;
+        push(u * u * u * cx + 3 * u * u * t * x1 + 3 * u * t * t * x2 + t * t * t * x,
+             u * u * u * cy + 3 * u * u * t * y1 + 3 * u * t * t * y2 + t * t * t * y, k === N); }
+      cx = x; cy = y;
+    } else i++;
+  }
+  const f = pts[0], l = pts[pts.length - 1];
+  if (Math.hypot(f[0] - l[0], f[1] - l[1]) < 1e-6) { pts.pop(); junc.pop(); }
+  return { pts, junc };
+}
+
+function outlineOf(shape) {
+  if (shape._outline) return shape._outline;
+  let pts, junc;
+  if (shape.fn) { pts = shape.fn(); junc = pts.map(() => true); }
+  else ({ pts, junc } = parsePath(shape.d));
+  const m = pts.length;
+  const corner = pts.map((p, i) => {
+    if (!junc[i]) return false;
+    const a = pts[(i - 1 + m) % m], b = pts[(i + 1) % m];
+    const v1 = [p[0] - a[0], p[1] - a[1]], v2 = [b[0] - p[0], b[1] - p[1]];
+    const c = (v1[0] * v2[0] + v1[1] * v2[1]) / (Math.hypot(...v1) * Math.hypot(...v2) || 1);
+    return Math.acos(Math.max(-1, Math.min(1, c))) > 30 * D;
+  });
+  shape._outline = { pts, corner };
+  return shape._outline;
+}
+
+function minDots(shape) {
+  const c = outlineOf(shape).corner.filter(Boolean).length;
+  return Math.max(c, 3);
+}
+
+function placeDots(shape, n) {
+  const { pts, corner } = outlineOf(shape);
+  const m = pts.length;
+  const cum = [0];
+  for (let i = 1; i <= m; i++) { const a = pts[i - 1], b = pts[i % m]; cum.push(cum[i - 1] + Math.hypot(b[0] - a[0], b[1] - a[1])); }
+  const L = cum[m];
+  const pointAt = s => {
+    s = ((s % L) + L) % L;
+    let lo = 0, hi = m;
+    while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (cum[mid] <= s) lo = mid; else hi = mid; }
+    const a = pts[lo], b = pts[(lo + 1) % m], seg = cum[lo + 1] - cum[lo] || 1, t = (s - cum[lo]) / seg;
+    return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+  };
+  let cs = [];
+  corner.forEach((c, i) => { if (c) cs.push(i); });
+  if (!cs.length) cs = [0];
+  const k = cs.length;
+  const gaps = cs.map((c, j) => { const nx = cs[(j + 1) % k]; let g = cum[nx] - cum[c]; if (g <= 0) g += L; return g; });
+  const add = gaps.map(() => 0);
+  for (let e = Math.max(0, n - k); e > 0; e--) {
+    let best = 0, bv = -1;
+    gaps.forEach((g, j) => { const v = g / (add[j] + 1); if (v > bv) { bv = v; best = j; } });
+    add[best]++;
+  }
+  const dots = [];
+  cs.forEach((c, j) => {
+    dots.push(pts[c].slice());
+    for (let q = 1; q <= add[j]; q++) dots.push(pointAt(cum[c] + gaps[j] * q / (add[j] + 1)));
+  });
+  return dots;
+}
+
+/* ---------- fitting into the 0–100 drawing box ---------- */
+const measureSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+measureSvg.setAttribute('style', 'position:absolute;width:0;height:0;overflow:hidden;visibility:hidden');
+document.body.appendChild(measureSvg);
+function fitOf(shape) {
+  if (shape._fit) return shape._fit;
+  const { pts } = outlineOf(shape);
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  pts.forEach(([x, y]) => { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); });
+  if (shape.extras) {
+    measureSvg.innerHTML = '<g>' + shape.extras + '</g>';
+    try { const b = measureSvg.firstChild.getBBox();
+      if (b.width || b.height) { x0 = Math.min(x0, b.x); y0 = Math.min(y0, b.y); x1 = Math.max(x1, b.x + b.width); y1 = Math.max(y1, b.y + b.height); } } catch (e) {}
+  }
+  const s = 80 / Math.max(x1 - x0, y1 - y0);
+  const tx = 50 - s * (x0 + x1) / 2, ty = 50 - s * (y0 + y1) / 2;
+  shape._fit = { s, tx, ty, map: ([x, y]) => [x * s + tx, y * s + ty] };
+  return shape._fit;
+}
+
+/* ---------- state ---------- */
+const state = {
+  shape: SHAPES[4], n: 40, labelMode: '1', reverse: false, offset: 0, size: 'm',
+  details: true, answer: false, grid: false, title: '連連看', mode: 'sheet', cat: '全部',
+};
+const SIZES = { s: { font: 2.3, r: 0.6 }, m: { font: 2.9, r: 0.8 }, l: { font: 3.7, r: 1.05 } };
+
+function labelFor(i) {
+  const m = state.labelMode;
+  if (m === 'abc') { let s = '', k = i + 1; while (k > 0) { k--; s = String.fromCharCode(65 + (k % 26)) + s; k = Math.floor(k / 26); } return s; }
+  return String((i + 1) * Number(m));
+}
+
+function pointInPoly(p, poly) {
+  let inside = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const [xi, yi] = poly[i], [xj, yj] = poly[j];
+    if ((yi > p[1]) !== (yj > p[1]) && p[0] < (xj - xi) * (p[1] - yi) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
+}
+function distSeg(p, a, b) {
+  const dx = b[0] - a[0], dy = b[1] - a[1], l2 = dx * dx + dy * dy;
+  let t = l2 ? ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / l2 : 0;
+  t = Math.max(0, Math.min(1, t));
+  return Math.hypot(p[0] - a[0] - t * dx, p[1] - a[1] - t * dy);
+}
+
+function compute() {
+  const shape = state.shape, fit = fitOf(shape);
+  const n = Math.max(state.n, minDots(shape));
+  let dots = placeDots(shape, n).map(fit.map);
+  if (state.reverse) dots = [dots[0], ...dots.slice(1).reverse()];
+  const off = ((state.offset % dots.length) + dots.length) % dots.length;
+  dots = dots.slice(off).concat(dots.slice(0, off));
+
+  const { font, r } = SIZES[state.size];
+  const outline = outlineOf(shape).pts.map(fit.map);
+  const labels = [];
+  const segs = dots.map((d, i) => [d, dots[(i + 1) % dots.length]]);
+  dots.forEach((p, i) => {
+    const a = dots[(i - 1 + dots.length) % dots.length], b = dots[(i + 1) % dots.length];
+    let tx = b[0] - a[0], ty = b[1] - a[1]; const tl = Math.hypot(tx, ty) || 1; tx /= tl; ty /= tl;
+    let nx = ty, ny = -tx;
+    if (pointInPoly([p[0] + nx * 0.8, p[1] + ny * 0.8], outline)) { nx = -nx; ny = -ny; }
+    const txt = labelFor(i);
+    const w = font * 0.58 * txt.length, dist = r + font * 0.35 + w * 0.35 + 0.6;
+    let best = null, bestScore = -Infinity;
+    for (const da of [0, 30, -30, 60, -60, 95, -95, 135, -135, 180]) {
+      const c = Math.cos(da * D), s = Math.sin(da * D);
+      const vx = nx * c - ny * s, vy = nx * s + ny * c;
+      const q = [p[0] + vx * dist, p[1] + vy * dist];
+      let clear = Infinity;
+      dots.forEach((o, j) => { if (j !== i) clear = Math.min(clear, Math.hypot(q[0] - o[0], q[1] - o[1]) - r); });
+      labels.forEach(l => { clear = Math.min(clear, Math.hypot(q[0] - l.x, q[1] - l.y) - font * 0.25); });
+      segs.forEach(([s1, s2]) => { clear = Math.min(clear, distSeg(q, s1, s2) + font * 0.1); });
+      if (q[0] < 1 || q[0] > 99) clear -= 5;
+      const score = clear - Math.abs(da) * 0.004;
+      if (clear >= font * 0.62) { best = q; break; }
+      if (score > bestScore) { bestScore = score; best = q; }
+    }
+    labels.push({ x: best[0], y: best[1], t: txt });
+  });
+  let perim = 0; segs.forEach(([a, b]) => perim += Math.hypot(b[0] - a[0], b[1] - a[1]));
+  return { dots, labels, fit, font, r, spacing: perim / dots.length, n: dots.length, cornerMin: minDots(shape) };
+}
+
+/* ---------- SVG building ---------- */
+const INK = '#1c2742';
+const NUM_FONT = "'Nunito','Arial Rounded MT Bold','Helvetica Neue',Arial,sans-serif";
+const CJK_FONT = "'Chiron GoRound TC','Noto Sans TC','PingFang TC','Microsoft JhengHei',sans-serif";
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const f2 = v => Math.round(v * 100) / 100;
+
+function extrasSvg(shape, fit, color, opacity) {
+  if (!shape.extras) return '';
+  const sw = 0.55 / fit.s;
+  return `<g transform="translate(${f2(fit.tx)} ${f2(fit.ty)}) scale(${f2(fit.s)})" opacity="${opacity}">
+    <style>.x{fill:none;stroke:${color};stroke-width:${f2(sw)};stroke-linecap:round;stroke-linejoin:round}.xf{fill:${color};stroke:none}</style>
+    ${shape.extras}</g>`;
+}
+
+function gridSvg() {
+  let s = '<g stroke="#c9d6ea" stroke-width="0.15">';
+  for (let v = 0; v <= 100; v += 5) s += `<line x1="${v}" y1="0" x2="${v}" y2="100"/><line x1="0" y1="${v}" x2="100" y2="${v}"/>`;
+  return s + '</g>';
+}
+
+function puzzleInner(c, { answer, details, grid, numbers = true }) {
+  const { dots, labels, fit, font, r } = c;
+  let s = '';
+  if (grid) s += gridSvg();
+  if (details) s += extrasSvg(state.shape, fit, '#7d8aa6', 0.9);
+  if (answer) s += `<polygon points="${dots.map(p => f2(p[0]) + ',' + f2(p[1])).join(' ')}" fill="none" stroke="#e05a73" stroke-width="0.35" stroke-linejoin="round" opacity="0.75"/>`;
+  // start marker
+  const st = dots[0];
+  s += `<circle cx="${f2(st[0])}" cy="${f2(st[1])}" r="${f2(r * 2.3)}" fill="none" stroke="#2b55d6" stroke-width="0.35"/>`;
+  s += `<g fill="${INK}">` + dots.map(p => `<circle cx="${f2(p[0])}" cy="${f2(p[1])}" r="${r}"/>`).join('') + '</g>';
+  if (numbers) {
+    s += `<g font-family="${NUM_FONT}" font-size="${font}" font-weight="700" text-anchor="middle" dominant-baseline="central" fill="${INK}" stroke="#fff" stroke-width="${f2(font * 0.22)}" paint-order="stroke" stroke-linejoin="round">`;
+    s += labels.map((l, i) => `<text x="${f2(l.x)}" y="${f2(l.y)}"${i === 0 ? ' fill="#2b55d6"' : ''}>${esc(l.t)}</text>`).join('');
+    s += '</g>';
+  }
+  return s;
+}
+
+function sheetSvg(c) {
+  const first = labelFor(0), last = labelFor(c.n - 1);
+  const title = state.title.trim() || '連連看';
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 210 297" width="210mm" height="297mm" font-family="${CJK_FONT}">
+  <rect width="210" height="297" fill="#ffffff"/>
+  <text x="105" y="27" text-anchor="middle" font-size="13" font-weight="800" fill="${INK}">${esc(title)}</text>
+  <g font-size="5" fill="${INK}" stroke="none">
+    <text x="22" y="43">姓名</text><line x1="35" y1="44" x2="110" y2="44" stroke="${INK}" stroke-width="0.3"/>
+    <text x="120" y="43">日期</text><line x1="133" y1="44" x2="188" y2="44" stroke="${INK}" stroke-width="0.3"/>
+  </g>
+  <rect x="14" y="52" width="182" height="182" rx="4" fill="none" stroke="#d6deea" stroke-width="0.4"/>
+  <g transform="translate(15 53) scale(1.8)">${puzzleInner(c, { answer: state.answer, details: state.details, grid: state.grid })}</g>
+  <g font-size="5" fill="${INK}" text-anchor="middle">
+    <text x="105" y="249">從 <tspan fill="#2b55d6" font-weight="800">${esc(first)}</tspan> 開始，依順序連到 <tspan font-weight="800">${esc(last)}</tspan>，最後再連回 ${esc(first)}。</text>
+    <text x="105" y="258">連好之後，猜猜看是什麼，再幫它塗上顏色！</text>
+  </g>
+  <g font-size="4.2" fill="${INK}">
+    <text x="22" y="276">我覺得這是：</text><line x1="50" y1="277" x2="120" y2="277" stroke="${INK}" stroke-width="0.3"/>
+  </g>
+  <text x="188" y="288" text-anchor="end" font-size="3" fill="#8a95ad">共 ${c.n} 個點</text>
+</svg>`;
+}
+
+/* ---------- UI ---------- */
+const $ = id => document.getElementById(id);
+const grid = $('grid'), chips = $('chips');
+
+function thumbSvg(shape) {
+  const fit = fitOf(shape);
+  const pts = outlineOf(shape).pts.map(fit.map);
+  return `<svg viewBox="0 0 100 100" aria-hidden="true"><polygon points="${pts.map(p => f2(p[0]) + ',' + f2(p[1])).join(' ')}" fill="${shape.color}" fill-opacity="0.35" stroke="${INK}" stroke-width="2" stroke-linejoin="round"/>${extrasSvg(shape, { ...fit, s: fit.s }, INK, 0.7).replace(/stroke-width:[\d.]+/, 'stroke-width:' + f2(1.6 / fit.s))}</svg>`;
+}
+
+function buildLibrary() {
+  chips.innerHTML = CATS.map(c => `<button type="button" class="chip" data-cat="${c}" aria-pressed="${c === state.cat}">${c}</button>`).join('');
+  grid.innerHTML = SHAPES.map((s, i) => `<button type="button" class="tile" data-id="${s.id}" data-cat="${s.cat}" aria-pressed="false" title="${s.name}">
+      <span class="no">${String(i + 1).padStart(2, '0')}</span>${thumbSvg(s)}<span>${s.name}</span></button>`).join('');
+}
+function syncLibrary() {
+  chips.querySelectorAll('.chip').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.cat === state.cat)));
+  let count = 0;
+  grid.querySelectorAll('.tile').forEach(t => {
+    const show = state.cat === '全部' || t.dataset.cat === state.cat;
+    t.hidden = !show; if (show) count++;
+    t.setAttribute('aria-pressed', String(t.dataset.id === state.shape.id));
+  });
+  $('libCount').textContent = `${count} 種`;
+}
+
+let current = null;
+function render() {
+  current = compute();
+  const c = current;
+  $('dotsOut').textContent = c.n;
+  $('dots').value = Math.max(state.n, 10);
+  document.querySelectorAll('#presets button').forEach(b => b.setAttribute('aria-pressed', String(Number(b.dataset.n) === state.n)));
+  $('meta').innerHTML = `圖案 <b>${state.shape.name}</b> · 共 <b>${c.n}</b> 點 · ${labelFor(0)} → ${labelFor(c.n - 1)}`;
+  const w = $('warn');
+  if (c.n > state.n) { w.hidden = false; w.textContent = `「${state.shape.name}」有 ${c.cornerMin} 個轉角，至少需要 ${c.cornerMin} 個點。`; }
+  else if (c.spacing < c.font * 1.25) { w.hidden = false; w.textContent = '點有點密，數字可能擠在一起。可以減少點數或把字調小。'; }
+  else w.hidden = true;
+  $('sheet').innerHTML = sheetSvg(c);
+  syncLibrary();
+  if (state.mode === 'play') startPlay();
+  try { history.replaceState(null, '', '#' + state.shape.id); } catch (e) {}
+}
+
+/* ---------- play mode ---------- */
+let play = null;
+function startPlay() {
+  const c = current;
+  play = { next: 0, done: false };
+  const hitR = Math.max(1.6, Math.min(3.2, c.spacing * 0.48));
+  $('board').innerHTML = `<svg viewBox="0 0 100 100" id="playSvg">
+    ${state.grid ? gridSvg() : ''}
+    <polygon id="fillPoly" points="${c.dots.map(p => f2(p[0]) + ',' + f2(p[1])).join(' ')}" fill="${state.shape.color}" opacity="0" stroke="none"/>
+    <g id="detailLayer">${state.details ? extrasSvg(state.shape, c.fit, '#7d8aa6', 0.9) : ''}</g>
+    <polyline id="path" points="" fill="none" stroke="#2b55d6" stroke-width="0.6" stroke-linecap="round" stroke-linejoin="round"/>
+    <g id="playStatic">${puzzleInner(c, { answer: false, details: false, grid: false })}</g>
+    <circle id="pulse" r="${c.r * 1.6}" fill="#ffd447" opacity="0" class="pulse"/>
+    <g id="hits">${c.dots.map((p, i) => `<circle class="hit" data-i="${i}" cx="${f2(p[0])}" cy="${f2(p[1])}" r="${f2(hitR)}" fill="transparent"/>`).join('')}</g>
+  </svg>`;
+  $('hits').addEventListener('pointerdown', e => {
+    const t = e.target.closest('.hit'); if (!t) return;
+    e.preventDefault(); tapDot(Number(t.dataset.i), t);
+  });
+  updatePlay();
+}
+function updatePlay() {
+  const c = current;
+  const pts = c.dots.slice(0, play.next).map(p => f2(p[0]) + ',' + f2(p[1]));
+  if (play.done) pts.push(f2(c.dots[0][0]) + ',' + f2(c.dots[0][1]));
+  $('path').setAttribute('points', pts.join(' '));
+  $('nextLabel').textContent = play.done ? '完成' : labelFor(play.next);
+  $('progressBar').style.width = (play.done ? 100 : play.next / c.n * 100) + '%';
+  $('pulse').setAttribute('opacity', '0');
+}
+function tapDot(i, el) {
+  if (!play || play.done) return;
+  if (i === play.next) {
+    play.next++;
+    if (play.next === current.n) finishPlay();
+    updatePlay();
+  } else {
+    el.classList.remove('shake'); void el.getBBox(); el.setAttribute('stroke', '#e05a73'); el.setAttribute('stroke-width', '0.3');
+    setTimeout(() => el.removeAttribute('stroke'), 450);
+  }
+}
+function finishPlay() {
+  play.done = true;
+  const fp = $('fillPoly'); fp.setAttribute('opacity', '1'); fp.classList.add('reveal');
+  $('detailLayer').innerHTML = extrasSvg(state.shape, current.fit, INK, 1);
+  $('playStatic').setAttribute('opacity', '0.25');
+  const card = document.createElement('div');
+  card.className = 'done-card'; card.textContent = `完成！是${state.shape.name}`;
+  $('board').appendChild(card);
+}
+$('hintBtn').onclick = () => { if (!play || play.done) return; const p = current.dots[play.next]; const pu = $('pulse'); pu.setAttribute('cx', p[0]); pu.setAttribute('cy', p[1]); pu.setAttribute('opacity', '0.9'); };
+$('undoBtn').onclick = () => { if (!play || play.done || play.next === 0) return; play.next--; updatePlay(); };
+$('restartBtn').onclick = () => startPlay();
+
+/* ---------- controls ---------- */
+function setMode(m) {
+  state.mode = m;
+  $('modeSheet').setAttribute('aria-pressed', String(m === 'sheet'));
+  $('modePlay').setAttribute('aria-pressed', String(m === 'play'));
+  $('sheetView').hidden = m !== 'sheet';
+  $('play').hidden = m !== 'play';
+  if (m === 'play') startPlay();
+}
+$('modeSheet').onclick = () => setMode('sheet');
+$('modePlay').onclick = () => setMode('play');
+
+function selectShape(id) {
+  const s = SHAPES.find(x => x.id === id); if (!s) return;
+  state.shape = s; state.offset = 0; state.n = s.n;
+  render();
+}
+grid.addEventListener('click', e => { const t = e.target.closest('.tile'); if (t) selectShape(t.dataset.id); });
+chips.addEventListener('click', e => { const b = e.target.closest('.chip'); if (b) { state.cat = b.dataset.cat; syncLibrary(); } });
+$('randomBtn').onclick = () => {
+  const pool = SHAPES.filter(s => (state.cat === '全部' || s.cat === state.cat) && s !== state.shape);
+  selectShape(pool[Math.floor(Math.random() * pool.length)].id);
+};
+$('dots').addEventListener('input', e => { state.n = Number(e.target.value); render(); });
+$('presets').addEventListener('click', e => { const b = e.target.closest('button'); if (b) { state.n = Number(b.dataset.n); render(); } });
+$('labelMode').onchange = e => { state.labelMode = e.target.value; render(); };
+$('dirCw').onclick = () => { state.reverse = false; $('dirCw').setAttribute('aria-pressed', 'true'); $('dirCcw').setAttribute('aria-pressed', 'false'); render(); };
+$('dirCcw').onclick = () => { state.reverse = true; $('dirCw').setAttribute('aria-pressed', 'false'); $('dirCcw').setAttribute('aria-pressed', 'true'); render(); };
+$('shuffleStart').onclick = () => { state.offset += 3 + Math.floor(Math.random() * Math.max(1, current.n - 6)); render(); };
+$('sizes').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  state.size = b.dataset.size;
+  $('sizes').querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+  render();
+});
+$('showDetails').onchange = e => { state.details = e.target.checked; render(); };
+$('showAnswer').onchange = e => { state.answer = e.target.checked; render(); };
+$('showGrid').onchange = e => { state.grid = e.target.checked; render(); };
+$('title').addEventListener('input', e => { state.title = e.target.value; $('sheet').innerHTML = sheetSvg(current); });
+
+/* ---------- export ---------- */
+const inFrame = (() => { try { return window.self !== window.top; } catch (e) { return true; } })();
+if (inFrame) { $('exportBox').hidden = true; $('frameNote').hidden = false; }
+function fileBase() { return `連連看-${state.shape.name}-${current.n}點`; }
+function download(blob, name) {
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+}
+$('printBtn').onclick = () => { setMode('sheet'); window.print(); };
+$('svgBtn').onclick = () => download(new Blob([sheetSvg(current)], { type: 'image/svg+xml' }), fileBase() + '.svg');
+$('pngBtn').onclick = () => {
+  const svg = sheetSvg(current).replace('width="210mm" height="297mm"', 'width="2480" height="3508"');
+  const img = new Image();
+  img.onload = () => {
+    const cv = document.createElement('canvas'); cv.width = 2480; cv.height = 3508;
+    const ctx = cv.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, cv.width, cv.height);
+    ctx.drawImage(img, 0, 0, cv.width, cv.height);
+    cv.toBlob(b => download(b, fileBase() + '.png'), 'image/png');
+  };
+  img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+};
+
+/* ---------- boot ---------- */
+buildLibrary();
+const fromHash = SHAPES.find(s => '#' + s.id === location.hash);
+if (fromHash) { state.shape = fromHash; }
+state.n = state.shape.n;
+render();
+window.__ctd = { SHAPES, state, selectShape, render, setMode };
+})();
+</script>
+</body>
+</html>
