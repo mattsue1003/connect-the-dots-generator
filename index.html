@@ -1,0 +1,1126 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>連連看生成器</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chiron+GoRound+TC:wght@400;600;800&family=Nunito:wght@600;800;900&display=swap">
+<style>
+/* Layout: a dotted activity-book desk — sticker library left, A4 worksheet center, settings right; one column on phones. */
+:root {
+  --bg: #eaf3ff;
+  --bg-dot: #c9dcf6;
+  --panel: #ffffff;
+  --ink: #2a2f4a;
+  --muted: #6a7190;
+  --line: #dde5f2;
+  --pink: #ff6f96;
+  --pink-deep: #d94f78;
+  --pink-soft: #ffe3ec;
+  --sky: #4f8cff;
+  --sky-soft: #e1ecff;
+  --sun: #ffcf4a;
+  --mint: #2fb58a;
+  --warn: #c0632a;
+  --sheet: #ffffff;
+  --sheet-ink: #2a2f4a;
+  --shadow: 0 2px 0 rgba(42,47,74,.06), 0 14px 34px -16px rgba(42,47,74,.28);
+  --font-display: "Chiron GoRound TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
+  --font-body: "Chiron GoRound TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif;
+  --font-num: "Nunito", "Arial Rounded MT Bold", system-ui, sans-serif;
+  --radius: 24px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #161a2e; --bg-dot: #262c48; --panel: #20253d; --ink: #eef0fb; --muted: #a3a9c6; --line: #343a5a;
+    --pink: #ff86a7; --pink-deep: #e0628a; --pink-soft: #4a2a3d; --sky: #82aaff; --sky-soft: #283660;
+    --sun: #ffd666; --mint: #5fd3a9; --warn: #f2a46c;
+    --shadow: 0 2px 0 rgba(0,0,0,.25), 0 14px 34px -16px rgba(0,0,0,.7);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #161a2e; --bg-dot: #262c48; --panel: #20253d; --ink: #eef0fb; --muted: #a3a9c6; --line: #343a5a;
+  --pink: #ff86a7; --pink-deep: #e0628a; --pink-soft: #4a2a3d; --sky: #82aaff; --sky-soft: #283660;
+  --sun: #ffd666; --mint: #5fd3a9; --warn: #f2a46c;
+  --shadow: 0 2px 0 rgba(0,0,0,.25), 0 14px 34px -16px rgba(0,0,0,.7);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; }
+body {
+  background-color: var(--bg);
+  background-image: radial-gradient(var(--bg-dot) 1.6px, transparent 1.7px);
+  background-size: 22px 22px;
+  color: var(--ink);
+  font: 15px/1.6 var(--font-body);
+  padding-inline: 16px;
+  padding-block: 0 40px;
+}
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 3px solid var(--sky); outline-offset: 2px; }
+
+/* Header */
+header.top {
+  max-width: 1440px; margin: 0 auto;
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 24px;
+  padding-block: 22px 18px;
+}
+.brand { display: flex; align-items: center; gap: 14px; }
+.brand svg { width: 58px; height: 58px; flex: none; }
+.brand h1 {
+  font-family: var(--font-display); font-weight: 800; font-size: 32px; line-height: 1.1; margin: 0;
+  letter-spacing: .02em; text-wrap: balance;
+}
+.brand h1 .dotword { color: var(--pink); }
+.brand p { margin: 4px 0 0; color: var(--muted); font-size: 14px; }
+.badges { display: flex; gap: 8px; flex-wrap: wrap; }
+.badge {
+  background: var(--panel); border: 2px solid var(--line); border-radius: 999px; padding: 4px 12px;
+  font-size: 13px; color: var(--muted);
+}
+.badge b { font-family: var(--font-num); color: var(--pink); font-size: 15px; }
+
+/* Grid */
+.app {
+  max-width: 1440px; margin: 0 auto;
+  display: grid; gap: 20px;
+  grid-template-columns: 320px minmax(0, 1fr) 290px;
+  grid-template-areas: "lib stage ctrl";
+  align-items: start;
+}
+.panel {
+  background: var(--panel); border: 2px solid var(--line); border-radius: var(--radius);
+  padding: 18px; min-width: 0; box-shadow: var(--shadow);
+}
+.panel h2 {
+  font-family: var(--font-display); font-size: 17px; font-weight: 800; margin: 0 0 12px;
+  display: flex; align-items: center; gap: 8px;
+}
+.panel h2::before {
+  content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--pink);
+  box-shadow: 14px 0 0 var(--sun), 28px 0 0 var(--sky); margin-right: 30px;
+}
+.panel h2 small { margin-left: auto; font-family: var(--font-body); font-weight: 600; color: var(--muted); font-size: 12px; }
+
+/* Library */
+.library { grid-area: lib; position: sticky; top: calc(env(safe-area-inset-top, 0px) + 12px); max-height: calc(100vh - 24px); display: flex; flex-direction: column; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+.chip {
+  border: 2px solid var(--line); background: transparent; border-radius: 999px;
+  padding: 2px 12px; font-size: 13px; color: var(--muted); font-weight: 600;
+}
+.chip .n { font-family: var(--font-num); font-size: 11px; opacity: .7; margin-left: 3px; }
+.chip[aria-pressed="true"] { background: var(--ink); color: var(--panel); border-color: var(--ink); }
+.grid {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px;
+  overflow-y: auto; padding: 4px; margin: -4px; flex: 1;
+}
+.tile {
+  --tint: #ffd0dc;
+  display: flex; flex-direction: column; align-items: center; gap: 0;
+  background: color-mix(in srgb, var(--tint) 20%, #ffffff);
+  border: 2px solid transparent; border-radius: 18px;
+  padding: 8px 4px 6px; position: relative; color: #2a2f4a;
+  transition: transform .15s ease;
+}
+.tile svg { width: 100%; aspect-ratio: 1; max-width: 100%; display: block; }
+.tile span.nm { font-size: 13px; font-weight: 600; }
+.tile .no { position: absolute; top: 5px; left: 8px; font-family: var(--font-num); font-weight: 800; font-size: 10px; color: #9aa2bd; }
+.tile:hover { transform: translateY(-2px) rotate(-1deg); }
+.tile[aria-pressed="true"] { border-color: var(--pink); box-shadow: 0 0 0 4px var(--pink-soft); }
+.lib-foot { margin-top: 14px; display: flex; gap: 8px; }
+
+/* Stage */
+.stage { grid-area: stage; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.stage-bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; }
+.seg { display: inline-flex; background: var(--panel); border: 2px solid var(--line); border-radius: 999px; padding: 4px; box-shadow: var(--shadow); }
+.seg button {
+  border: 0; background: transparent; padding: 6px 18px; border-radius: 999px; font-weight: 800; color: var(--muted);
+}
+.seg button[aria-pressed="true"] { background: var(--pink); color: #fff; }
+.meta {
+  font-size: 13px; color: var(--muted); background: var(--panel); border: 2px solid var(--line);
+  border-radius: 999px; padding: 4px 14px;
+}
+.meta b { color: var(--ink); font-family: var(--font-num); }
+.meta b.nm { font-family: var(--font-display); }
+.sheet-wrap { display: flex; justify-content: center; }
+#sheet {
+  width: 100%; max-width: 660px; background: var(--sheet); border-radius: 8px; box-shadow: var(--shadow);
+  aspect-ratio: 210 / 297; overflow: hidden; transform: rotate(-.4deg);
+}
+#sheet svg { width: 100%; height: 100%; display: block; }
+.warn {
+  font-size: 13px; color: var(--warn); background: color-mix(in srgb, var(--warn) 12%, var(--panel));
+  border: 2px dashed color-mix(in srgb, var(--warn) 40%, transparent);
+  border-radius: 14px; padding: 6px 12px; max-width: 660px; margin: 0 auto; width: 100%;
+}
+
+/* Play */
+#play { display: flex; flex-direction: column; gap: 12px; align-items: center; }
+.play-board {
+  width: 100%; max-width: 660px; background: var(--sheet); border-radius: 26px; box-shadow: var(--shadow);
+  position: relative; aspect-ratio: 1; overflow: hidden; touch-action: manipulation; border: 3px solid var(--line);
+}
+.play-board svg { width: 100%; height: 100%; display: block; }
+.play-board canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.play-hud { width: 100%; max-width: 660px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; justify-content: space-between; }
+.next-pill {
+  display: inline-flex; align-items: center; gap: 8px; background: var(--panel); border: 2px solid var(--line);
+  border-radius: 999px; padding: 3px 6px 3px 14px; font-size: 14px; font-weight: 600; box-shadow: var(--shadow);
+}
+.next-pill b {
+  font-family: var(--font-num); font-weight: 900; font-size: 20px; color: #fff; background: var(--sky);
+  border-radius: 999px; min-width: 40px; padding: 0 10px; text-align: center; line-height: 34px;
+}
+.progress { flex: 1; min-width: 120px; height: 14px; border-radius: 999px; background: var(--panel); border: 2px solid var(--line); overflow: hidden; }
+.progress i {
+  display: block; height: 100%; width: 0; transition: width .2s;
+  background: repeating-linear-gradient(45deg, var(--mint) 0 8px, color-mix(in srgb, var(--mint) 75%, #fff) 8px 16px);
+}
+.play-actions { display: flex; gap: 8px; }
+.done-card {
+  position: absolute; left: 50%; bottom: 4%; transform: translateX(-50%);
+  background: #2a2f4a; color: #fff; border-radius: 999px; padding: 8px 10px 8px 22px;
+  font-family: var(--font-display); font-weight: 800; font-size: 20px; white-space: nowrap;
+  display: flex; align-items: center; gap: 12px;
+  animation: pop .5s cubic-bezier(.2,1.6,.4,1);
+}
+.done-card button { background: var(--pink); color: #fff; border: 0; border-radius: 999px; padding: 4px 14px; font-size: 14px; font-weight: 800; }
+@keyframes pop { from { transform: translateX(-50%) scale(.5); opacity: 0; } }
+.hit { cursor: pointer; }
+.pulse { animation: pulse 1s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+@keyframes pulse { 50% { transform: scale(1.8); } }
+.reveal { animation: reveal .9s ease forwards; }
+@keyframes reveal { from { opacity: 0; } to { opacity: 1; } }
+.boop { animation: boop .3s ease; transform-box: fill-box; transform-origin: center; }
+@keyframes boop { 50% { transform: scale(1.8); } }
+
+/* Controls */
+.controls { grid-area: ctrl; display: flex; flex-direction: column; gap: 18px; }
+.field { display: flex; flex-direction: column; gap: 7px; }
+.field > label, .field > .lbl { font-size: 14px; font-weight: 800; display: flex; justify-content: space-between; align-items: baseline; }
+.field output { font-family: var(--font-num); font-weight: 900; font-size: 22px; color: var(--pink); }
+.field .hint { font-size: 12px; color: var(--muted); }
+input[type="range"] { width: 100%; accent-color: var(--pink); }
+input[type="text"], select {
+  width: 100%; border: 2px solid var(--line); background: var(--sheet); color: var(--sheet-ink);
+  border-radius: 14px; padding: 7px 12px;
+}
+.pills { display: flex; flex-wrap: wrap; gap: 6px; }
+.pills button {
+  border: 2px solid var(--line); background: transparent; border-radius: 12px; padding: 3px 10px; font-size: 13px; font-weight: 600;
+}
+.pills button[aria-pressed="true"] { background: var(--sky-soft); border-color: var(--sky); color: var(--ink); }
+.switch { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 14px; font-weight: 600; cursor: pointer; }
+.switch input { width: 20px; height: 20px; accent-color: var(--pink); }
+.btn {
+  border: 2px solid var(--line); background: var(--panel); border-radius: 14px; padding: 7px 14px; font-weight: 800;
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  box-shadow: 0 3px 0 var(--line); transition: transform .08s, box-shadow .08s;
+}
+.btn:active { transform: translateY(3px); box-shadow: 0 0 0 var(--line); }
+.btn.primary { background: var(--pink); border-color: var(--pink-deep); color: #fff; box-shadow: 0 4px 0 var(--pink-deep); }
+.btn.primary:active { box-shadow: 0 0 0 var(--pink-deep); transform: translateY(4px); }
+.btn.small { padding: 4px 12px; font-size: 13px; }
+.btn-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.btn-row .btn { flex: 1; }
+.divider { border: 0; border-top: 2px dotted var(--line); margin: 0; }
+.note { font-size: 12px; color: var(--muted); margin: 0; background: var(--sky-soft); border-radius: 12px; padding: 8px 10px; }
+
+@media (max-width: 1180px) {
+  .app { grid-template-columns: 300px minmax(0, 1fr); grid-template-areas: "lib stage" "lib ctrl"; }
+}
+@media (max-width: 760px) {
+  .app { grid-template-columns: minmax(0, 1fr); grid-template-areas: "lib" "stage" "ctrl"; }
+  .library { position: static; max-height: none; }
+  .grid { grid-template-columns: none; grid-template-rows: repeat(2, auto); grid-auto-flow: column; grid-auto-columns: 92px; overflow-x: auto; overflow-y: hidden; padding-bottom: 8px; }
+  .brand h1 { font-size: 26px; }
+  .brand svg { width: 48px; height: 48px; }
+  #sheet { transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+@media print {
+  @page { size: A4; margin: 0; }
+  body { background: #fff; padding: 0; }
+  header.top, .library, .controls, .stage-bar, .warn, #play { display: none !important; }
+  .app { display: block; max-width: none; }
+  #sheet { box-shadow: none; border-radius: 0; max-width: none; width: 210mm; height: 297mm; transform: none; }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="brand">
+    <svg viewBox="0 0 58 58" aria-hidden="true">
+      <rect x="2" y="2" width="54" height="54" rx="18" fill="var(--pink)"/>
+      <path d="M14 38 L22 17 L31 30 L43 15 L45 40 Z" fill="#fff" fill-opacity=".25" stroke="#fff" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"/>
+      <g fill="var(--sun)" stroke="#2a2f4a" stroke-width="1.4"><circle cx="14" cy="38" r="3.6"/><circle cx="22" cy="17" r="3.6"/><circle cx="31" cy="30" r="3.6"/><circle cx="43" cy="15" r="3.6"/><circle cx="45" cy="40" r="3.6"/></g>
+    </svg>
+    <div>
+      <h1><span class="dotword">連連看</span>生成器</h1>
+      <p>挑一個圖案、調好點數，印成學習單，或直接在線上連連看。</p>
+    </div>
+  </div>
+  <div class="badges"><span class="badge"><b>50</b> 種圖案</span><span class="badge"><b>10–150</b> 個點</span><span class="badge">A4 學習單</span></div>
+</header>
+
+<main class="app">
+  <aside class="panel library" aria-label="圖案庫">
+    <h2>圖案庫 <small id="libCount">50 種</small></h2>
+    <div class="chips" id="chips" role="group" aria-label="分類"></div>
+    <div class="grid" id="grid"></div>
+    <div class="lib-foot">
+      <button class="btn small" id="randomBtn" type="button" style="flex:1">隨機挑一個</button>
+    </div>
+  </aside>
+
+  <section class="stage" aria-label="預覽">
+    <div class="stage-bar">
+      <div class="seg" role="group" aria-label="模式">
+        <button type="button" id="modeSheet" aria-pressed="true">學習單</button>
+        <button type="button" id="modePlay" aria-pressed="false">線上玩</button>
+      </div>
+      <div class="meta" id="meta"></div>
+    </div>
+    <div id="warn" class="warn" hidden></div>
+    <div id="sheetView" class="sheet-wrap"><div id="sheet"></div></div>
+    <div id="play" hidden>
+      <div class="play-hud">
+        <span class="next-pill">下一個 <b id="nextLabel">1</b></span>
+        <div class="progress" aria-hidden="true"><i id="progressBar"></i></div>
+        <div class="play-actions">
+          <button class="btn small" type="button" id="hintBtn">提示</button>
+          <button class="btn small" type="button" id="undoBtn">復原</button>
+          <button class="btn small" type="button" id="restartBtn">重來</button>
+        </div>
+      </div>
+      <div class="play-board" id="board"></div>
+    </div>
+  </section>
+
+  <aside class="panel controls" aria-label="設定">
+    <h2>設定</h2>
+    <div class="field">
+      <label for="dots">點的數量 <output id="dotsOut">40</output></label>
+      <input type="range" id="dots" min="10" max="150" step="1" value="40">
+      <div class="pills" id="presets" role="group" aria-label="難度">
+        <button type="button" data-n="20">簡單 20</button>
+        <button type="button" data-n="40">普通 40</button>
+        <button type="button" data-n="70">進階 70</button>
+        <button type="button" data-n="110">挑戰 110</button>
+      </div>
+      <span class="hint">轉角一定會放點，所以有稜有角的圖案，點數下限會高一些。</span>
+    </div>
+
+    <div class="field">
+      <label for="labelMode">數字怎麼數</label>
+      <select id="labelMode">
+        <option value="1">1、2、3、4…</option>
+        <option value="2">2、4、6、8…（兩個一數）</option>
+        <option value="5">5、10、15…（五個一數）</option>
+        <option value="10">10、20、30…（十個一數）</option>
+        <option value="abc">A、B、C…（英文字母）</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <span class="lbl">方向與起點</span>
+      <div class="pills" role="group" aria-label="方向">
+        <button type="button" id="dirCw" aria-pressed="true">順時針</button>
+        <button type="button" id="dirCcw" aria-pressed="false">逆時針</button>
+        <button type="button" id="shuffleStart">換個起點</button>
+      </div>
+    </div>
+
+    <div class="field">
+      <span class="lbl">字與點的大小</span>
+      <div class="pills" role="group" aria-label="大小" id="sizes">
+        <button type="button" data-size="s">小</button>
+        <button type="button" data-size="m" aria-pressed="true">中</button>
+        <button type="button" data-size="l">大</button>
+      </div>
+    </div>
+
+    <div class="field">
+      <span class="lbl">學習單花邊</span>
+      <div class="pills" role="group" aria-label="花邊" id="decos">
+        <button type="button" data-deco="star" aria-pressed="true">星星</button>
+        <button type="button" data-deco="heart">愛心</button>
+        <button type="button" data-deco="flower">小花</button>
+        <button type="button" data-deco="plain">簡約</button>
+      </div>
+    </div>
+
+    <hr class="divider">
+
+    <label class="switch" for="showDetails">畫上眼睛、腮紅等細節 <input type="checkbox" id="showDetails" checked></label>
+    <label class="switch" for="showAnswer">顯示答案線 <input type="checkbox" id="showAnswer"></label>
+    <label class="switch" for="showGrid">背景格線 <input type="checkbox" id="showGrid"></label>
+
+    <hr class="divider">
+
+    <div class="field">
+      <label for="title">學習單標題</label>
+      <input type="text" id="title" value="連連看" maxlength="16">
+    </div>
+
+    <div class="field" id="exportBox">
+      <span class="lbl">輸出</span>
+      <div class="btn-row">
+        <button class="btn primary" type="button" id="printBtn">列印學習單</button>
+      </div>
+      <div class="btn-row">
+        <button class="btn" type="button" id="pngBtn">下載 PNG</button>
+        <button class="btn" type="button" id="svgBtn">下載 SVG</button>
+      </div>
+    </div>
+    <p class="note" id="frameNote" hidden>這個預覽視窗不能列印或下載。把 index.html 存到電腦後用瀏覽器開啟，就能列印 A4 學習單、下載 PNG 與 SVG。</p>
+  </aside>
+</main>
+
+<script>
+(() => {
+'use strict';
+const D = Math.PI / 180;
+
+/* ---------- geometry helpers used by shape definitions ---------- */
+function arc(cx, cy, r, a0, a1, n) {
+  const pts = [];
+  for (let i = 0; i <= n; i++) { const a = a0 + (a1 - a0) * i / n; pts.push([cx + r * Math.cos(a), cy + r * Math.sin(a)]); }
+  return pts;
+}
+function circleIntersect(x1, y1, r1, x2, y2, r2) {
+  const dx = x2 - x1, dy = y2 - y1, d = Math.hypot(dx, dy);
+  const a = (d * d + r1 * r1 - r2 * r2) / (2 * d);
+  const h = Math.sqrt(Math.max(0, r1 * r1 - a * a));
+  const xm = x1 + a * dx / d, ym = y1 + a * dy / d;
+  return [[xm + h * dy / d, ym - h * dx / d], [xm - h * dy / d, ym + h * dx / d]];
+}
+const ang = (c, p) => Math.atan2(p[1] - c[1], p[0] - c[0]);
+function cwArc(cx, cy, r, a, b) {
+  while (b <= a) b += 2 * Math.PI;
+  return arc(cx, cy, r, a, b, Math.max(6, Math.round((b - a) / (4 * D))));
+}
+function joinArcs(list) {
+  const out = [];
+  list.forEach(seg => seg.forEach((p, i) => { if (i === 0 && out.length) return; out.push(p); }));
+  const f = out[0], l = out[out.length - 1];
+  if (Math.hypot(f[0] - l[0], f[1] - l[1]) < 1e-6) out.pop();
+  return out;
+}
+function stackedCircles(cs) {
+  const L = [], R = [];
+  for (let i = 0; i < cs.length - 1; i++) {
+    const [p, q] = circleIntersect(...cs[i], ...cs[i + 1]);
+    L.push(p[0] < q[0] ? p : q); R.push(p[0] < q[0] ? q : p);
+  }
+  const arcs = [], n = cs.length;
+  arcs.push(cwArc(cs[0][0], cs[0][1], cs[0][2], ang(cs[0], R[0]), ang(cs[0], L[0])));
+  for (let i = 1; i < n - 1; i++) arcs.push(cwArc(cs[i][0], cs[i][1], cs[i][2], ang(cs[i], L[i - 1]), ang(cs[i], L[i])));
+  const t = cs[n - 1];
+  arcs.push(cwArc(t[0], t[1], t[2], ang(t, L[n - 2]), ang(t, R[n - 2])));
+  for (let i = n - 2; i >= 1; i--) arcs.push(cwArc(cs[i][0], cs[i][1], cs[i][2], ang(cs[i], R[i]), ang(cs[i], R[i - 1])));
+  return joinArcs(arcs);
+}
+function polar(cx, cy, n, rf) {
+  const p = [];
+  for (let i = 0; i < n; i++) { const t = i / n * 2 * Math.PI, r = rf(t); p.push([cx + r * Math.cos(t), cy + r * Math.sin(t)]); }
+  return p;
+}
+
+/* Small reusable face parts. x = line, xf = filled, xb = blush, xw = white */
+const eyes = (x1, x2, y, r = 2.6) => `<circle class="xf" cx="${x1}" cy="${y}" r="${r}"/><circle class="xf" cx="${x2}" cy="${y}" r="${r}"/><circle class="xw" cx="${x1 + r * .35}" cy="${y - r * .4}" r="${r * .38}"/><circle class="xw" cx="${x2 + r * .35}" cy="${y - r * .4}" r="${r * .38}"/>`;
+const blush = (x1, x2, y, rx = 4, ry = 2.4) => `<ellipse class="xb" cx="${x1}" cy="${y}" rx="${rx}" ry="${ry}"/><ellipse class="xb" cx="${x2}" cy="${y}" rx="${rx}" ry="${ry}"/>`;
+const smile = (cx, y, w = 4) => `<path class="x" d="M${cx - w} ${y} Q${cx} ${y + w * .9} ${cx + w} ${y}"/>`;
+const catMouth = (cx, y, w = 3.5) => `<path class="x" d="M${cx} ${y} Q${cx - w * .2} ${y + w} ${cx - w} ${y + w * .55} M${cx} ${y} Q${cx + w * .2} ${y + w} ${cx + w} ${y + w * .55}"/>`;
+
+/* ---------- the 50 patterns ---------- */
+const SHAPES = [
+  /* 形狀 */
+  { id: 'heart', name: '愛心', cat: '形狀', color: '#ff6f8e', n: 30,
+    fn: () => { const p = []; for (let i = 0; i < 240; i++) { const t = i / 240 * 2 * Math.PI;
+      p.push([50 + 16 * Math.pow(Math.sin(t), 3) * 2.6, 48 - (13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t)) * 2.6]); } return p; },
+    extras: eyes(40, 60, 48, 2.8) + blush(32, 68, 56) + smile(50, 56, 4) },
+  { id: 'star', name: '星星', cat: '形狀', color: '#ffc93c', n: 30,
+    fn: () => { const p = []; for (let i = 0; i < 10; i++) { const r = i % 2 ? 19 : 46, a = -90 * D + i * 36 * D; p.push([50 + r * Math.cos(a), 54 + r * Math.sin(a)]); } return p; },
+    extras: eyes(43, 57, 52, 2.2) + blush(38, 62, 58, 3, 1.8) + smile(50, 59, 3) },
+  { id: 'diamond', name: '鑽石', cat: '形狀', color: '#6fd3f0', n: 25,
+    d: 'M30 15 L70 15 L90 38 L50 90 L10 38 Z',
+    extras: '<path class="x" d="M10 38 L90 38 M30 15 L40 38 L50 15 L60 38 L70 15 M40 38 L50 90 L60 38"/><path class="x" d="M96 10 L96 18 M92 14 L100 14 M4 70 L4 76 M1 73 L7 73"/>' },
+
+  /* 動物 */
+  { id: 'cat', name: '貓咪', cat: '動物', color: '#ffb35c', n: 40,
+    d: 'M20 85 C10 70 12 50 20 40 L18 12 L40 30 C46 28 54 28 60 30 L82 12 L80 40 C88 50 90 70 80 85 C65 95 35 95 20 85 Z',
+    extras: eyes(37, 63, 57, 3.6) + blush(28, 72, 68, 5, 2.8) + '<path class="xf" d="M47 64 L53 64 L50 67.5 Z"/>' + catMouth(50, 67.5, 4) + '<path class="x" d="M24 22 L27 33 M76 22 L73 33 M35 65 L22 62 M35 69 L22 71 M65 65 L78 62 M65 69 L78 71 M44 40 L44 45 M50 38 L50 44 M56 40 L56 45"/>' },
+  { id: 'dog', name: '小狗', cat: '動物', color: '#d9a066', n: 45,
+    d: 'M30 22 C40 16 60 16 70 22 C78 14 92 16 94 30 C96 44 92 58 84 62 C80 63 78 60 78 56 C80 70 76 84 64 90 C56 94 44 94 36 90 C24 84 20 70 22 56 C22 60 20 63 16 62 C8 58 4 44 6 30 C8 16 22 14 30 22 Z',
+    extras: eyes(39, 61, 50, 3.2) + blush(31, 69, 64, 4.5, 2.6) + '<ellipse class="xf" cx="50" cy="61" rx="5.5" ry="3.8"/><path class="x" d="M50 64.5 L50 69 Q45 74 41 70 M50 69 Q55 74 59 70"/><path class="xb" d="M47 71.5 Q50 80 53 71.5 Z"/><path class="x" d="M70 27 Q78 34 80 50 M30 27 Q22 34 20 50"/>' },
+  { id: 'bear', name: '小熊', cat: '動物', color: '#c48a5c', n: 40,
+    d: 'M28 30 C22 22 12 22 12 32 C12 40 18 44 22 44 C18 52 16 60 18 68 C22 84 36 92 50 92 C64 92 78 84 82 68 C84 60 82 52 78 44 C82 44 88 40 88 32 C88 22 78 22 72 30 C66 26 58 24 50 24 C42 24 34 26 28 30 Z',
+    extras: '<circle class="x" cx="21" cy="33" r="4.5"/><circle class="x" cx="79" cy="33" r="4.5"/>' + eyes(38, 62, 52, 3) + blush(29, 71, 66, 4.5, 2.6) + '<ellipse class="x" cx="50" cy="68" rx="12" ry="9"/><ellipse class="xf" cx="50" cy="64" rx="4.2" ry="3"/><path class="x" d="M50 67 L50 70 Q46 74 43 71 M50 70 Q54 74 57 71"/>' },
+  { id: 'panda', name: '熊貓', cat: '動物', color: '#f2f2f2', n: 40,
+    d: 'M30 30 C26 20 14 18 12 28 C10 36 16 42 22 42 C16 50 14 58 16 66 C20 82 34 90 50 90 C66 90 80 82 84 66 C86 58 84 50 78 42 C84 42 90 36 88 28 C86 18 74 20 70 30 C64 27 57 26 50 26 C43 26 36 27 30 30 Z',
+    extras: '<path class="xf" d="M20 26 C24 24 28 28 27 32 C24 34 20 34 19 31 Z M80 26 C76 24 72 28 73 32 C76 34 80 34 81 31 Z"/><ellipse class="xf" cx="37" cy="54" rx="7" ry="9"/><ellipse class="xf" cx="63" cy="54" rx="7" ry="9"/><circle class="xw" cx="38.5" cy="53" r="3"/><circle class="xw" cx="61.5" cy="53" r="3"/><circle class="xf" cx="39" cy="53.5" r="1.6"/><circle class="xf" cx="61" cy="53.5" r="1.6"/>' + blush(27, 73, 70, 4.5, 2.6) + '<ellipse class="xf" cx="50" cy="66" rx="4" ry="2.8"/>' + catMouth(50, 68.5, 4) },
+  { id: 'rabbit', name: '兔子', cat: '動物', color: '#ffc4d6', n: 40,
+    d: 'M30 50 C22 40 20 20 24 8 C30 4 36 20 40 40 C46 38 54 38 60 40 C64 20 70 4 76 8 C80 20 78 40 70 50 C82 60 84 80 72 88 C60 96 40 96 28 88 C16 80 18 60 30 50 Z',
+    extras: '<path class="xb" d="M27 14 C26 24 29 34 33 42 C34 30 31 18 27 14 Z M73 14 C74 24 71 34 67 42 C66 30 69 18 73 14 Z"/>' + eyes(39, 61, 64, 3) + blush(31, 69, 75, 4.5, 2.6) + '<path class="xf" d="M47 71 L53 71 L50 74 Z"/>' + catMouth(50, 74, 3.5) },
+  { id: 'pig', name: '小豬', cat: '動物', color: '#ffb0c4', n: 40,
+    d: 'M22 40 C16 30 14 20 18 12 C28 14 36 22 40 28 C46 26 54 26 60 28 C64 22 72 14 82 12 C86 20 84 30 78 40 C88 52 88 70 78 82 C68 92 32 92 22 82 C12 70 12 52 22 40 Z',
+    extras: '<path class="x" d="M22 18 Q28 22 32 28 M78 18 Q72 22 68 28"/>' + eyes(37, 63, 52, 3) + blush(27, 73, 66, 4.5, 2.6) + '<ellipse class="x" cx="50" cy="66" rx="11" ry="8"/><ellipse class="xf" cx="45.5" cy="66" rx="1.8" ry="2.8"/><ellipse class="xf" cx="54.5" cy="66" rx="1.8" ry="2.8"/>' + smile(50, 78, 3) },
+  { id: 'fox', name: '狐狸', cat: '動物', color: '#ff8a3d', n: 35,
+    d: 'M50 30 C42 30 36 32 32 34 L16 10 L14 38 C12 44 10 50 6 56 C20 60 30 70 50 88 C70 70 80 60 94 56 C90 50 88 44 86 38 L84 10 L68 34 C64 32 58 30 50 30 Z',
+    extras: '<path class="x" d="M19 18 L20 33 L27 31 Z M81 18 L80 33 L73 31 Z M10 56 Q30 56 44 72 M90 56 Q70 56 56 72"/>' + eyes(38, 62, 50, 3) + blush(30, 70, 58, 4, 2.4) + '<ellipse class="xf" cx="50" cy="79" rx="3.6" ry="2.6"/>' },
+  { id: 'lion', name: '獅子', cat: '動物', color: '#ffb547', n: 48,
+    fn: () => polar(50, 50, 480, t => 37 + 7 * Math.abs(Math.sin(6 * t))),
+    extras: '<circle class="x" cx="50" cy="52" r="24"/><circle class="x" cx="32" cy="34" r="6"/><circle class="x" cx="68" cy="34" r="6"/>' + eyes(41, 59, 48, 2.8) + blush(35, 65, 58, 4, 2.4) + '<path class="xf" d="M45.5 56 L54.5 56 L50 60.5 Z"/>' + catMouth(50, 60.5, 4) },
+  { id: 'fish', name: '小魚', cat: '動物', color: '#ff9a4d', n: 35,
+    d: 'M12 50 C25 25 55 22 70 44 L88 28 L83 50 L88 72 L70 56 C55 78 25 75 12 50 Z',
+    extras: eyes(27, 27, 46, 2.8) + '<ellipse class="xb" cx="30" cy="56" rx="3.5" ry="2"/><path class="x" d="M38 37 Q45 50 38 63 M50 44 Q53 50 50 56 M58 44 Q61 50 58 56 M17 54 Q20 57 23 55"/><circle class="x" cx="5" cy="38" r="2.2"/><circle class="x" cx="2" cy="29" r="1.5"/>' },
+  { id: 'whale', name: '鯨魚', cat: '動物', color: '#5b8de0', n: 45,
+    d: 'M8 58 C8 36 30 30 52 32 C68 34 76 44 78 52 C80 40 84 30 90 22 C92 32 92 42 88 52 C94 50 100 52 106 56 C98 62 88 64 80 62 C74 74 56 80 38 80 C18 80 8 72 8 58 Z',
+    extras: eyes(24, 24, 52, 2.6) + '<ellipse class="xb" cx="30" cy="60" rx="4" ry="2.2"/><path class="x" d="M14 62 Q20 66 26 64 M30 68 Q50 72 66 66 M30 30 Q28 20 22 15 M30 30 Q32 18 40 13 M30 30 L30 18"/>' },
+  { id: 'octopus', name: '章魚', cat: '動物', color: '#ff7f9f', n: 50,
+    d: 'M20 50 C20 24 34 10 50 10 C66 10 80 24 80 50 C80 60 86 66 94 64 C90 74 80 74 74 66 C74 76 72 86 62 88 C64 80 62 72 58 68 C56 76 54 84 50 90 C46 84 44 76 42 68 C38 72 36 80 38 88 C28 86 26 76 26 66 C20 74 10 74 6 64 C14 66 20 60 20 50 Z',
+    extras: eyes(40, 60, 40, 3.2) + blush(32, 68, 49, 4, 2.4) + smile(50, 48, 4) + '<circle class="x" cx="38" cy="22" r="3"/><circle class="x" cx="62" cy="21" r="2.4"/><circle class="x" cx="52" cy="17" r="1.6"/>' },
+  { id: 'bird', name: '小鳥', cat: '動物', color: '#6fb6f0', n: 35,
+    d: 'M22 38 L8 42 L22 46 C20 62 34 76 54 74 L86 84 L78 68 L92 60 L66 56 C66 40 54 26 40 26 C30 26 24 30 22 38 Z',
+    extras: eyes(32, 32, 38, 2.6) + '<ellipse class="xb" cx="32" cy="47" rx="4" ry="2.4"/><path class="x" d="M40 54 Q54 44 62 60 Q50 66 40 54 Z M46 74 L44 84 M40 86 L48 86 M58 75 L58 84 M54 86 L62 86 M44 22 Q42 16 46 12 M48 24 Q50 18 54 17"/>' },
+  { id: 'chick', name: '小雞', cat: '動物', color: '#ffd84a', n: 40,
+    d: 'M44 14 L44 6 L50 11 L56 4 L56 14 C70 16 80 28 80 44 C86 50 88 58 82 62 C80 72 68 84 50 84 C30 84 18 72 18 56 C18 48 20 42 24 36 L14 34 L24 30 C28 20 36 14 44 14 Z',
+    extras: eyes(34, 34, 28, 2.6) + '<ellipse class="xb" cx="34" cy="40" rx="4" ry="2.4"/><path class="x" d="M15 34 L24 33 M62 50 Q74 54 70 68 M42 84 L40 93 M35 93 L45 93 M58 84 L58 93 M53 93 L63 93"/>' },
+  { id: 'penguin', name: '企鵝', cat: '動物', color: '#5a6b8f', n: 45,
+    d: 'M50 8 C66 8 74 22 74 36 C74 44 76 50 84 58 C88 62 86 66 80 64 L76 62 C76 74 72 84 66 88 L70 94 L56 94 L50 90 L44 94 L30 94 L34 88 C28 84 24 74 24 62 L20 64 C14 66 12 62 16 58 C24 50 26 44 26 36 C26 22 34 8 50 8 Z',
+    extras: '<path class="x" d="M50 30 C38 30 34 44 34 60 C34 76 42 86 50 86 C58 86 66 76 66 60 C66 44 62 30 50 30 Z"/>' + eyes(42, 58, 22, 2.6) + blush(36, 64, 30, 3.5, 2) + '<path class="xf" d="M46 27 L54 27 L50 32 Z"/>' },
+  { id: 'owl', name: '貓頭鷹', cat: '動物', color: '#b38660', n: 40,
+    d: 'M24 30 L18 8 L38 20 C46 17 54 17 62 20 L82 8 L76 30 C82 40 84 52 82 64 C80 80 68 92 50 92 C32 92 20 80 18 64 C16 52 18 40 24 30 Z',
+    extras: '<circle class="x" cx="38" cy="40" r="10"/><circle class="x" cx="62" cy="40" r="10"/>' + eyes(38, 62, 40, 4.2) + '<path class="xf" d="M46 49 L54 49 L50 56 Z"/>' + blush(28, 72, 54, 3.5, 2) + '<path class="x" d="M38 66 Q42 70 46 66 M54 66 Q58 70 62 66 M46 76 Q50 80 54 76 M24 50 Q30 62 28 78 M76 50 Q70 62 72 78"/>' },
+  { id: 'turtle', name: '烏龜', cat: '動物', color: '#5cbf7a', n: 50,
+    d: 'M22 64 C22 40 36 26 52 26 C68 26 80 40 80 60 C84 54 88 50 94 52 C100 54 100 64 94 66 C90 68 86 66 82 66 L78 72 L78 80 L68 80 L66 70 L38 70 L36 80 L26 80 L26 72 L22 70 L12 72 L16 66 Z',
+    extras: '<path class="x" d="M42 36 L60 36 L66 48 L60 60 L42 60 L36 48 Z M42 36 L39 28 M60 36 L64 29 M36 48 L23 50 M66 48 L79 50 M42 60 L40 69 M60 60 L62 69 M22 64 L80 64"/><circle class="xf" cx="92" cy="57" r="1.8"/><ellipse class="xb" cx="91" cy="62" rx="2.4" ry="1.4"/>' },
+  { id: 'frog', name: '青蛙', cat: '動物', color: '#7fd06b', n: 40,
+    d: 'M14 56 C10 44 16 36 24 34 C22 22 30 14 38 16 C44 18 46 24 46 30 L54 30 C54 24 56 18 62 16 C70 14 78 22 76 34 C84 36 90 44 86 56 C84 74 68 84 50 84 C32 84 16 74 14 56 Z',
+    extras: '<circle class="x" cx="36" cy="26" r="6"/><circle class="x" cx="64" cy="26" r="6"/>' + eyes(36, 64, 26, 3) + blush(26, 74, 58, 5, 2.8) + '<path class="x" d="M30 58 Q50 74 70 58"/><circle class="xf" cx="46" cy="46" r="1"/><circle class="xf" cx="54" cy="46" r="1"/>' },
+  { id: 'butterfly', name: '蝴蝶', cat: '動物', color: '#c08cf0', n: 50,
+    d: 'M50 30 C40 5 5 5 10 35 C12 48 30 50 45 50 C25 55 15 75 28 85 C38 92 48 75 50 62 C52 75 62 92 72 85 C85 75 75 55 55 50 C70 50 88 48 90 35 C95 5 60 5 50 30 Z',
+    extras: '<ellipse class="xf" cx="50" cy="47" rx="2.6" ry="12"/><path class="x" d="M49 35 Q44 20 38 15 M51 35 Q56 20 62 15"/><circle class="xf" cx="38" cy="14" r="1.6"/><circle class="xf" cx="62" cy="14" r="1.6"/><circle class="x" cx="28" cy="28" r="6"/><circle class="x" cx="72" cy="28" r="6"/><circle class="xb" cx="33" cy="72" r="4"/><circle class="xb" cx="67" cy="72" r="4"/>' },
+
+  /* 自然 */
+  { id: 'flower', name: '花朵', cat: '自然', color: '#ff86b0', n: 50,
+    fn: () => polar(50, 36, 400, t => 19 + 13 * Math.abs(Math.cos(2.5 * (t + 90 * D)))),
+    extras: '<circle class="x" cx="50" cy="36" r="9"/>' + eyes(46.5, 53.5, 35, 1.4) + smile(50, 38.5, 2) + '<path class="x" d="M50 55 Q48 76 50 98 M50 84 Q62 72 74 77 Q63 88 50 84 Z M50 76 Q38 66 28 71 Q38 80 50 76 Z"/>' },
+  { id: 'tulip', name: '鬱金香', cat: '自然', color: '#ff6f8e', n: 35,
+    d: 'M30 20 L40 30 L50 14 L60 30 L70 20 C74 36 72 52 62 58 C56 62 44 62 38 58 C28 52 26 36 30 20 Z',
+    extras: eyes(44, 56, 42, 2) + blush(39, 61, 48, 3, 1.8) + smile(50, 47, 2.5) + '<path class="x" d="M50 61 Q50 80 50 97 M50 88 Q36 72 28 75 Q36 90 50 92 M50 82 Q64 68 72 71 Q64 86 50 86"/>' },
+  { id: 'tree', name: '聖誕樹', cat: '自然', color: '#36b37a', n: 40,
+    d: 'M50 5 L68 30 L60 30 L78 52 L68 52 L88 75 L56 75 L56 92 L44 92 L44 75 L12 75 L32 52 L22 52 L40 30 L32 30 Z',
+    extras: '<circle class="xf" cx="46" cy="24" r="2"/><circle class="xf" cx="57" cy="44" r="2"/><circle class="xf" cx="40" cy="47" r="2"/><circle class="xf" cx="63" cy="66" r="2"/><circle class="xf" cx="34" cy="67" r="2"/><path class="x" d="M38 38 Q50 44 60 36 M30 60 Q50 68 70 58"/><path class="x" d="M50 0 L51.5 -3.5 M50 0 L48 -3"/>' },
+  { id: 'cactus', name: '仙人掌', cat: '自然', color: '#5fc27e', n: 45,
+    d: 'M30 60 L42 60 L42 50 L30 50 C24 50 20 46 20 40 L20 32 C20 24 32 24 32 32 L32 38 L42 38 L42 16 C42 6 58 6 58 16 L58 40 L68 40 L68 28 C68 20 80 20 80 28 L80 46 C80 52 76 54 72 54 L58 54 L58 60 L70 60 L66 90 L34 90 Z',
+    extras: eyes(46, 54, 28, 1.8) + blush(43, 57, 33, 2.4, 1.4) + smile(50, 32, 2.2) + '<path class="x" d="M31 68 L69 68 M45 18 L42.5 17 M55 22 L57.5 21 M26 34 L23.5 33 M74 32 L76.5 31 M50 44 L50 47"/><circle class="xb" cx="50" cy="79" r="3"/>' },
+  { id: 'leaf', name: '葉子', cat: '自然', color: '#8ccf5a', n: 30,
+    d: 'M15 85 C15 40 45 12 88 12 C88 55 60 85 15 85 Z',
+    extras: '<path class="x" d="M15 85 L8 92 M15 85 L78 22 M35 65 L33 50 M35 65 L50 67 M52 48 L51 35 M52 48 L65 49"/>' },
+  { id: 'mushroom', name: '蘑菇', cat: '自然', color: '#f2564d', n: 40,
+    d: 'M10 50 C10 20 30 8 50 8 C70 8 90 20 90 50 C80 54 70 54 62 52 L64 86 Q64 92 58 92 L42 92 Q36 92 36 86 L38 52 C30 54 20 54 10 50 Z',
+    extras: '<circle class="xw" cx="30" cy="32" r="6"/><circle class="x" cx="30" cy="32" r="6"/><circle class="x" cx="52" cy="22" r="7"/><circle class="x" cx="72" cy="35" r="5"/><circle class="x" cx="44" cy="42" r="3"/>' + eyes(45, 55, 67, 1.8) + blush(41, 59, 72, 2.6, 1.6) + smile(50, 72, 2.4) },
+  { id: 'moon', name: '月亮', cat: '自然', color: '#ffd84a', n: 30,
+    fn: () => {
+      const o = [50, 50, 42], c = [68, 40, 36];
+      const [p, q] = circleIntersect(...o, ...c);
+      const up = p[1] < q[1] ? p : q, lo = p[1] < q[1] ? q : p;
+      const norm = a => (a + 2 * Math.PI) % (2 * Math.PI);
+      const outer = cwArc(o[0], o[1], o[2], ang(o, lo), ang(o, up));
+      const a0 = norm(ang(c, up)), a1 = norm(ang(c, lo));
+      return joinArcs([outer, arc(c[0], c[1], c[2], a0, a1, Math.round(Math.abs(a0 - a1) / (4 * D)))]);
+    },
+    extras: '<path class="x" d="M15 48 Q19 52 23 48 M16 62 Q20 66 25 61"/><ellipse class="xb" cx="20" cy="56" rx="3.2" ry="2"/><path class="x" d="M44 18 L50 18 L44 24 L50 24 M54 8 L58 8 L54 12 L58 12"/>' },
+  { id: 'sun', name: '太陽', cat: '自然', color: '#ffb02e', n: 40,
+    fn: () => {
+      const segs = [];
+      for (let i = 0; i < 10; i++) {
+        const t = -90 * D + i * 36 * D;
+        segs.push([[50 + 27 * Math.cos(t - 9 * D), 50 + 27 * Math.sin(t - 9 * D)], [50 + 46 * Math.cos(t), 50 + 46 * Math.sin(t)]]);
+        segs.push(arc(50, 50, 27, t + 9 * D, t + 27 * D, 5));
+      }
+      return joinArcs(segs);
+    },
+    extras: eyes(42, 58, 47, 2.6) + blush(37, 63, 55, 4, 2.4) + smile(50, 55, 5) },
+  { id: 'cloud', name: '雲朵', cat: '自然', color: '#a8d4f5', n: 35,
+    d: 'M20 70 C8 70 6 54 18 50 C16 36 32 30 40 38 C44 22 66 20 70 36 C82 32 94 44 86 56 C94 62 88 72 80 70 Z',
+    extras: eyes(42, 60, 54, 2.4) + blush(36, 66, 60, 3.5, 2) + smile(51, 59, 3) + '<path class="x" d="M30 80 Q28 84 30 86 Q32 84 30 80 M50 80 Q48 84 50 86 Q52 84 50 80 M70 80 Q68 84 70 86 Q72 84 70 80"/>' },
+  { id: 'lightning', name: '閃電', cat: '自然', color: '#ffd02b', n: 22,
+    d: 'M58 5 L22 52 L46 52 L36 95 L80 40 L54 40 L68 5 Z',
+    extras: '' },
+
+  /* 食物 */
+  { id: 'apple', name: '蘋果', cat: '食物', color: '#f0524a', n: 35,
+    d: 'M50 28 C40 18 14 20 14 48 C14 72 32 92 42 90 C46 89 54 89 58 90 C68 92 86 72 86 48 C86 20 60 18 50 28 Z',
+    extras: '<path class="x" d="M50 28 Q50 16 56 8 M54 18 Q66 8 76 14 Q64 24 54 18 Z M24 40 Q22 48 25 54"/>' + eyes(40, 60, 54, 2.6) + blush(33, 67, 62, 4, 2.4) + smile(50, 62, 3.5) },
+  { id: 'strawberry', name: '草莓', cat: '食物', color: '#ff5470', n: 35,
+    d: 'M50 26 C62 20 82 22 84 40 C86 58 66 84 50 92 C34 84 14 58 16 40 C18 22 38 20 50 26 Z',
+    extras: '<path class="x" d="M50 27 L36 20 L44 18 L40 10 L50 16 L60 10 L56 18 L64 20 Z M50 16 L50 8"/>' + eyes(41, 59, 46, 2.6) + blush(34, 66, 54, 4, 2.2) + smile(50, 53, 3) + '<g class="xs"><ellipse class="xf" cx="30" cy="36" rx=".9" ry="1.5"/><ellipse class="xf" cx="70" cy="36" rx=".9" ry="1.5"/><ellipse class="xf" cx="28" cy="58" rx=".9" ry="1.5"/><ellipse class="xf" cx="72" cy="58" rx=".9" ry="1.5"/><ellipse class="xf" cx="40" cy="66" rx=".9" ry="1.5"/><ellipse class="xf" cx="60" cy="66" rx=".9" ry="1.5"/><ellipse class="xf" cx="50" cy="76" rx=".9" ry="1.5"/><ellipse class="xf" cx="50" cy="36" rx=".9" ry="1.5"/></g>' },
+  { id: 'watermelon', name: '西瓜', cat: '食物', color: '#ff6b7f', n: 35,
+    fn: () => arc(50, 36, 44, 0, Math.PI, 90),
+    extras: '<path class="x" d="M13 36 A37 37 0 0 0 87 36"/>' + eyes(42, 58, 44, 2.4) + blush(35, 65, 50, 3.5, 2) + smile(50, 50, 3) + '<ellipse class="xf" cx="30" cy="60" rx="1.2" ry="2"/><ellipse class="xf" cx="50" cy="65" rx="1.2" ry="2"/><ellipse class="xf" cx="70" cy="60" rx="1.2" ry="2"/><ellipse class="xf" cx="24" cy="44" rx="1.2" ry="2"/><ellipse class="xf" cx="76" cy="44" rx="1.2" ry="2"/>' },
+  { id: 'cupcake', name: '杯子蛋糕', cat: '食物', color: '#ff9ac2', n: 45,
+    d: 'M20 50 C10 50 12 36 22 36 C22 22 36 18 42 22 C46 10 60 10 62 22 C70 18 82 24 78 36 C88 36 90 50 80 50 L72 90 L28 90 Z',
+    extras: '<path class="x" d="M38 50 L40 90 M62 50 L60 90 M30 33 L33 35 M46 28 L48 31 M64 32 L67 31 M36 42 L38 44 M70 42 L72 44"/>' + eyes(44, 56, 66, 2.2) + blush(39, 61, 72, 3, 1.8) + smile(50, 71, 2.5) },
+  { id: 'icecream', name: '冰淇淋', cat: '食物', color: '#ffa9c6', n: 40,
+    d: 'M26 46 C14 46 14 28 28 28 C28 12 50 6 58 18 C70 12 86 22 78 34 C88 38 84 48 74 46 L50 94 Z',
+    extras: '<path class="x" d="M38 58 L62 58 M44 70 L56 70 M34 50 L55 90 M66 50 L45 90"/><circle class="xf" cx="54" cy="10" r="3.5"/><path class="x" d="M54 7 Q56 2 60 1"/>' + eyes(43, 57, 34, 2.2) + blush(38, 62, 40, 3, 1.8) + smile(50, 39, 2.5) },
+
+  /* 生活 */
+  { id: 'house', name: '房子', cat: '生活', color: '#ff9b6a', n: 30,
+    d: 'M20 90 L20 50 L10 50 L50 15 L66 29 L66 18 L74 18 L74 36 L90 50 L80 50 L80 90 Z',
+    extras: '<path class="x" d="M43 90 L43 72 Q50 64 57 72 L57 90"/><circle class="xf" cx="54" cy="81" r="1.2"/><rect class="x" x="26" y="58" width="11" height="11" rx="2"/><rect class="x" x="63" y="58" width="11" height="11" rx="2"/><path class="x" d="M31.5 58 L31.5 69 M26 63.5 L37 63.5 M68.5 58 L68.5 69 M63 63.5 L74 63.5 M70 14 Q66 10 70 6 Q74 2 70 -2"/><path class="xb" d="M50 46 C46 42 42 40 44 37 C46 35 49 36 50 38 C51 36 54 35 56 37 C58 40 54 42 50 46 Z"/>' },
+  { id: 'castle', name: '城堡', cat: '生活', color: '#b7a6f0', n: 50,
+    d: 'M10 90 L10 30 L16 30 L16 36 L22 36 L22 30 L28 30 L28 50 L38 50 L38 44 L44 44 L44 50 L56 50 L56 44 L62 44 L62 50 L72 50 L72 30 L78 30 L78 36 L84 36 L84 30 L90 30 L90 90 Z',
+    extras: '<path class="x" d="M42 90 L42 74 Q50 64 58 74 L58 90 M19 36 L19 17 M81 36 L81 17"/><path class="xb" d="M19 17 L28 20 L19 23 Z M81 17 L90 20 L81 23 Z"/><rect class="x" x="16" y="52" width="6" height="10" rx="3"/><rect class="x" x="78" y="52" width="6" height="10" rx="3"/><path class="x" d="M50 57 C48 55 46 54 47 52.5 C48 51.5 49.5 52 50 53 C50.5 52 52 51.5 53 52.5 C54 54 52 55 50 57 Z"/>' },
+  { id: 'gift', name: '禮物', cat: '生活', color: '#ff7aa2', n: 40,
+    d: 'M14 40 L40 40 C30 34 24 24 32 20 C38 16 46 28 50 36 C54 28 62 16 68 20 C76 24 70 34 60 40 L86 40 L86 54 L80 54 L80 92 L20 92 L20 54 L14 54 Z',
+    extras: '<path class="x" d="M45 40 L45 92 M55 40 L55 92 M20 54 L80 54"/><circle class="xf" cx="50" cy="38" r="3"/><circle class="xb" cx="30" cy="66" r="2.5"/><circle class="xb" cx="70" cy="66" r="2.5"/><circle class="xb" cx="32" cy="82" r="2.5"/><circle class="xb" cx="68" cy="82" r="2.5"/>' },
+  { id: 'teacup', name: '茶杯', cat: '生活', color: '#8fd3e8', n: 40,
+    d: 'M16 34 L76 34 C76 40 75 46 74 50 C80 46 92 46 92 56 C92 66 80 70 70 66 C66 72 60 78 52 80 L74 80 C78 80 80 84 74 86 L18 86 C12 84 14 80 18 80 L40 80 C26 74 18 60 16 34 Z',
+    extras: '<path class="x" d="M75 55 C84 51 87 60 78 62 M36 26 Q32 20 36 14 Q40 8 36 2 M52 26 Q48 20 52 14 Q56 8 52 2"/>' + eyes(39, 53, 50, 2.4) + blush(33, 59, 57, 3.5, 2) + smile(46, 56, 3) },
+  { id: 'umbrella', name: '雨傘', cat: '生活', color: '#5fc3d3', n: 40,
+    d: 'M8 50 C10 22 30 10 50 10 C70 10 90 22 92 50 Q83 42 73 50 Q63 42 53 50 L53 82 Q53 92 44 92 Q35 92 35 84 L39 84 Q39 88 44 88 Q49 88 49 82 L49 50 Q38 42 27 50 Q17 42 8 50 Z',
+    extras: '<path class="x" d="M50 10 Q30 24 27 50 M50 10 Q70 24 73 50 M50 10 L50 5"/><path class="x" d="M14 64 Q12 68 14 70 Q16 68 14 64 M86 62 Q84 66 86 68 Q88 66 86 62 M72 78 Q70 82 72 84 Q74 82 72 78"/>' },
+  { id: 'bell', name: '鈴鐺', cat: '生活', color: '#ffc93c', n: 35,
+    d: 'M50 10 C30 10 26 30 26 50 C26 64 20 72 12 78 L88 78 C80 72 74 64 74 50 C74 30 70 10 50 10 Z',
+    extras: '<circle class="x" cx="50" cy="6.5" r="3.5"/><circle class="xf" cx="50" cy="84" r="5"/><path class="x" d="M27 62 Q50 68 73 62 M36 26 Q34 36 35 44"/><path class="xb" d="M40 6 Q34 2 30 6 Q34 10 40 6 Z M60 6 Q66 2 70 6 Q66 10 60 6 Z"/>' },
+  { id: 'crown', name: '皇冠', cat: '生活', color: '#ffc93c', n: 30,
+    d: 'M12 80 L8 30 L30 52 L50 18 L70 52 L92 30 L88 80 Z',
+    extras: '<path class="x" d="M12 68 L88 68"/><circle class="xb" cx="30" cy="74" r="2.6"/><circle class="xf" cx="50" cy="74" r="2.6"/><circle class="xb" cx="70" cy="74" r="2.6"/><path class="x" d="M50 48 L54 54 L50 60 L46 54 Z"/>' },
+  { id: 'balloon', name: '熱氣球', cat: '生活', color: '#ff7f6e', n: 45,
+    d: 'M50 8 C74 8 88 24 86 42 C84 58 66 66 58 72 L60 82 L62 82 L62 94 L38 94 L38 82 L40 82 L42 72 C34 66 16 58 14 42 C12 24 26 8 50 8 Z',
+    extras: '<path class="x" d="M50 8 Q34 40 44 72 M50 8 Q66 40 56 72 M38 88 L62 88"/><path class="x" d="M4 20 Q8 16 12 20 Q16 16 20 20 M82 76 Q85 73 88 76 Q91 73 94 76"/>' },
+  { id: 'sailboat', name: '帆船', cat: '生活', color: '#ff7a63', n: 35,
+    d: 'M10 70 L46 70 L46 64 L20 64 L46 20 L46 8 L50 8 L50 14 L84 62 L50 62 L50 70 L90 70 L78 88 L22 88 Z',
+    extras: '<path class="x" d="M4 95 Q14 90 24 95 Q34 100 44 95 Q54 90 64 95 Q74 100 84 95 Q90 92 96 95"/><circle class="x" cx="34" cy="78" r="3"/><circle class="x" cx="50" cy="78" r="3"/><circle class="x" cx="66" cy="78" r="3"/>' },
+  { id: 'car', name: '汽車', cat: '生活', color: '#ff6359', n: 40,
+    d: 'M8 70 L8 54 C8 50 12 48 18 48 L28 48 L38 32 C40 30 42 30 44 30 L66 30 C70 30 72 32 74 34 L84 48 L88 48 C92 48 94 52 94 56 L94 70 L83 70 C83 56 63 56 63 70 L37 70 C37 56 17 56 17 70 Z',
+    extras: '<circle class="x" cx="27" cy="70" r="6.5"/><circle class="xf" cx="27" cy="70" r="2.2"/><circle class="x" cx="73" cy="70" r="6.5"/><circle class="xf" cx="73" cy="70" r="2.2"/><path class="x" d="M33 47 L41 35 L54 35 L54 47 Z M58 35 L68 35 L76 47 L58 47 Z M48 54 L52 54"/><circle class="xf" cx="90" cy="54" r="1.6"/>' },
+  { id: 'airplane', name: '飛機', cat: '生活', color: '#7fb2ff', n: 45,
+    d: 'M50 4 C54 4 56 10 56 16 L56 38 L92 56 L92 64 L56 54 L56 76 L66 84 L66 90 L50 86 L34 90 L34 84 L44 76 L44 54 L8 64 L8 56 L44 38 L44 16 C44 10 46 4 50 4 Z',
+    extras: '<path class="x" d="M46.5 13 Q50 9 53.5 13"/><circle class="x" cx="50" cy="24" r="1.6"/><circle class="x" cx="50" cy="31" r="1.6"/><circle class="x" cx="50" cy="38" r="1.6"/><ellipse class="x" cx="27" cy="54" rx="2.5" ry="4"/><ellipse class="x" cx="73" cy="54" rx="2.5" ry="4"/>' },
+  { id: 'rocket', name: '火箭', cat: '生活', color: '#e4dcf7', n: 40,
+    d: 'M50 5 C62 15 66 30 64 55 L78 72 L78 82 L64 74 L60 82 L40 82 L36 74 L22 82 L22 72 L36 55 C34 30 38 15 50 5 Z',
+    extras: '<circle class="x" cx="50" cy="38" r="6.5"/><circle class="xw" cx="48" cy="36" r="1.6"/><path class="x" d="M41 21 L59 21"/><path class="xb" d="M43 85 Q50 101 57 85 Z"/><path class="x" d="M14 16 L14 22 M11 19 L17 19 M86 30 L86 36 M83 33 L89 33"/>' },
+  { id: 'robot', name: '機器人', cat: '生活', color: '#9fb4d6', n: 50,
+    d: 'M46 14 L46 8 C42 8 42 0 50 0 C58 0 58 8 54 8 L54 14 L76 14 C82 14 86 18 86 24 L86 36 L92 36 L92 56 L86 56 L86 68 C86 74 82 78 76 78 L24 78 C18 78 14 74 14 68 L14 56 L8 56 L8 36 L14 36 L14 24 C14 18 18 14 24 14 Z',
+    extras: '<circle class="x" cx="35" cy="40" r="8"/><circle class="x" cx="65" cy="40" r="8"/>' + eyes(35, 65, 40, 3.4) + blush(26, 74, 54, 4, 2.2) + '<rect class="x" x="36" y="58" width="28" height="9" rx="3"/><path class="x" d="M43 58 L43 67 M50 58 L50 67 M57 58 L57 67"/><circle class="xf" cx="20" cy="20" r="1.2"/><circle class="xf" cx="80" cy="20" r="1.2"/>' },
+  { id: 'snowman', name: '雪人', cat: '生活', color: '#dbeafb', n: 45,
+    fn: () => stackedCircles([[50, 74, 22], [50, 43, 15], [50, 20, 11]]),
+    extras: '<path class="x" d="M38 10 L62 10 M43 10 L43 0 L57 0 L57 10"/><path class="xb" d="M43 6 L57 6 L57 8.5 L43 8.5 Z"/>' + eyes(46, 54, 17.5, 1.6) + '<path class="xf" d="M50 20.5 L58 22 L50 23.5 Z"/>' + blush(43, 57, 23, 2.4, 1.4) + '<path class="x" d="M38 31.5 Q50 36 62 31.5 M56 33.5 L58 40"/><circle class="xf" cx="50" cy="42" r="1.5"/><circle class="xf" cx="50" cy="49" r="1.5"/><circle class="xf" cx="50" cy="66" r="1.7"/><circle class="xf" cx="50" cy="76" r="1.7"/><path class="x" d="M36 44 L20 34 M24 36.5 L22 30 M64 44 L80 34 M76 36.5 L78 30"/>' },
+];
+
+const CATS = ['全部', '動物', '自然', '食物', '生活', '形狀'];
+
+/* ---------- path parsing and dot placement ---------- */
+function parsePath(d) {
+  const toks = d.match(/[MLHVQCZ]|-?\d*\.?\d+/gi);
+  const pts = [], junc = [];
+  let i = 0, cmd = 'M', cx = 0, cy = 0;
+  const num = () => parseFloat(toks[i++]);
+  const push = (x, y, j) => { pts.push([x, y]); junc.push(j); };
+  const N = 24;
+  while (i < toks.length) {
+    if (/[a-z]/i.test(toks[i])) cmd = toks[i++].toUpperCase();
+    if (cmd === 'Z') continue;
+    if (cmd === 'M' || cmd === 'L') { cx = num(); cy = num(); push(cx, cy, true); if (cmd === 'M') cmd = 'L'; }
+    else if (cmd === 'H') { cx = num(); push(cx, cy, true); }
+    else if (cmd === 'V') { cy = num(); push(cx, cy, true); }
+    else if (cmd === 'Q') {
+      const x1 = num(), y1 = num(), x = num(), y = num();
+      for (let k = 1; k <= N; k++) { const t = k / N, u = 1 - t;
+        push(u * u * cx + 2 * u * t * x1 + t * t * x, u * u * cy + 2 * u * t * y1 + t * t * y, k === N); }
+      cx = x; cy = y;
+    } else if (cmd === 'C') {
+      const x1 = num(), y1 = num(), x2 = num(), y2 = num(), x = num(), y = num();
+      for (let k = 1; k <= N; k++) { const t = k / N, u = 1 - t;
+        push(u * u * u * cx + 3 * u * u * t * x1 + 3 * u * t * t * x2 + t * t * t * x,
+             u * u * u * cy + 3 * u * u * t * y1 + 3 * u * t * t * y2 + t * t * t * y, k === N); }
+      cx = x; cy = y;
+    } else i++;
+  }
+  const f = pts[0], l = pts[pts.length - 1];
+  if (Math.hypot(f[0] - l[0], f[1] - l[1]) < 1e-6) { pts.pop(); junc.pop(); }
+  return { pts, junc };
+}
+
+function outlineOf(shape) {
+  if (shape._outline) return shape._outline;
+  let pts, junc;
+  if (shape.fn) { pts = shape.fn(); junc = pts.map(() => true); }
+  else ({ pts, junc } = parsePath(shape.d));
+  const m = pts.length;
+  const corner = pts.map((p, i) => {
+    if (!junc[i]) return false;
+    const a = pts[(i - 1 + m) % m], b = pts[(i + 1) % m];
+    const v1 = [p[0] - a[0], p[1] - a[1]], v2 = [b[0] - p[0], b[1] - p[1]];
+    const c = (v1[0] * v2[0] + v1[1] * v2[1]) / (Math.hypot(...v1) * Math.hypot(...v2) || 1);
+    return Math.acos(Math.max(-1, Math.min(1, c))) > 30 * D;
+  });
+  shape._outline = { pts, corner };
+  return shape._outline;
+}
+const minDots = shape => Math.max(outlineOf(shape).corner.filter(Boolean).length, 3);
+
+function placeDots(shape, n) {
+  const { pts, corner } = outlineOf(shape);
+  const m = pts.length, cum = [0];
+  for (let i = 1; i <= m; i++) { const a = pts[i - 1], b = pts[i % m]; cum.push(cum[i - 1] + Math.hypot(b[0] - a[0], b[1] - a[1])); }
+  const L = cum[m];
+  const pointAt = s => {
+    s = ((s % L) + L) % L;
+    let lo = 0, hi = m;
+    while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (cum[mid] <= s) lo = mid; else hi = mid; }
+    const a = pts[lo], b = pts[(lo + 1) % m], t = (s - cum[lo]) / (cum[lo + 1] - cum[lo] || 1);
+    return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+  };
+  let cs = [];
+  corner.forEach((c, i) => { if (c) cs.push(i); });
+  if (!cs.length) cs = [0];
+  const k = cs.length;
+  const gaps = cs.map((c, j) => { let g = cum[cs[(j + 1) % k]] - cum[c]; if (g <= 0) g += L; return g; });
+  const add = gaps.map(() => 0);
+  for (let e = Math.max(0, n - k); e > 0; e--) {
+    let best = 0, bv = -1;
+    gaps.forEach((g, j) => { const v = g / (add[j] + 1); if (v > bv) { bv = v; best = j; } });
+    add[best]++;
+  }
+  const dots = [];
+  cs.forEach((c, j) => {
+    dots.push(pts[c].slice());
+    for (let q = 1; q <= add[j]; q++) dots.push(pointAt(cum[c] + gaps[j] * q / (add[j] + 1)));
+  });
+  return dots;
+}
+
+/* ---------- fit into the 0–100 drawing box; sample details so numbers avoid them ---------- */
+const SVGNS = 'http://www.w3.org/2000/svg';
+const measureSvg = document.createElementNS(SVGNS, 'svg');
+measureSvg.setAttribute('style', 'position:absolute;width:0;height:0;overflow:hidden;visibility:hidden');
+document.body.appendChild(measureSvg);
+function fitOf(shape) {
+  if (shape._fit) return shape._fit;
+  const { pts } = outlineOf(shape);
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  pts.forEach(([x, y]) => { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); });
+  const raw = [];
+  if (shape.extras) {
+    measureSvg.innerHTML = '<g>' + shape.extras + '</g>';
+    const g = measureSvg.firstChild;
+    try {
+      const b = g.getBBox();
+      if (b.width || b.height) { x0 = Math.min(x0, b.x); y0 = Math.min(y0, b.y); x1 = Math.max(x1, b.x + b.width); y1 = Math.max(y1, b.y + b.height); }
+      g.querySelectorAll('path,circle,ellipse,rect,line,polygon').forEach(el => {
+        const len = el.getTotalLength();
+        const steps = Math.max(2, Math.ceil(len / 1.2));
+        for (let i = 0; i <= steps; i++) { const p = el.getPointAtLength(len * i / steps); raw.push([p.x, p.y]); }
+        if (el.tagName === 'circle' || el.tagName === 'ellipse') { const bb = el.getBBox(); raw.push([bb.x + bb.width / 2, bb.y + bb.height / 2]); }
+      });
+    } catch (e) {}
+  }
+  const s = 80 / Math.max(x1 - x0, y1 - y0);
+  const tx = 50 - s * (x0 + x1) / 2, ty = 50 - s * (y0 + y1) / 2;
+  const map = ([x, y]) => [x * s + tx, y * s + ty];
+  shape._fit = { s, tx, ty, map, obstacles: raw.map(map) };
+  return shape._fit;
+}
+
+/* ---------- state ---------- */
+const state = {
+  shape: SHAPES.find(s => s.id === 'cat'), n: 40, labelMode: '1', reverse: false, offset: 0, size: 'm',
+  details: true, answer: false, grid: false, title: '連連看', mode: 'sheet', cat: '全部', deco: 'star',
+};
+const SIZES = { s: { font: 2.3, r: 0.6 }, m: { font: 2.9, r: 0.8 }, l: { font: 3.7, r: 1.05 } };
+
+function labelFor(i) {
+  const m = state.labelMode;
+  if (m === 'abc') { let s = '', k = i + 1; while (k > 0) { k--; s = String.fromCharCode(65 + (k % 26)) + s; k = Math.floor(k / 26); } return s; }
+  return String((i + 1) * Number(m));
+}
+function pointInPoly(p, poly) {
+  let inside = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const [xi, yi] = poly[i], [xj, yj] = poly[j];
+    if ((yi > p[1]) !== (yj > p[1]) && p[0] < (xj - xi) * (p[1] - yi) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
+}
+function distSeg(p, a, b) {
+  const dx = b[0] - a[0], dy = b[1] - a[1], l2 = dx * dx + dy * dy;
+  let t = l2 ? ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / l2 : 0;
+  t = Math.max(0, Math.min(1, t));
+  return Math.hypot(p[0] - a[0] - t * dx, p[1] - a[1] - t * dy);
+}
+
+function compute() {
+  const shape = state.shape, fit = fitOf(shape);
+  const n = Math.max(state.n, minDots(shape));
+  let dots = placeDots(shape, n).map(fit.map);
+  if (state.reverse) dots = [dots[0], ...dots.slice(1).reverse()];
+  const off = ((state.offset % dots.length) + dots.length) % dots.length;
+  dots = dots.slice(off).concat(dots.slice(0, off));
+
+  const { font, r } = SIZES[state.size];
+  const outline = outlineOf(shape).pts.map(fit.map);
+  const obst = state.details ? fit.obstacles : [];
+  const labels = [];
+  const segs = dots.map((d, i) => [d, dots[(i + 1) % dots.length]]);
+  dots.forEach((p, i) => {
+    const a = dots[(i - 1 + dots.length) % dots.length], b = dots[(i + 1) % dots.length];
+    let tx = b[0] - a[0], ty = b[1] - a[1]; const tl = Math.hypot(tx, ty) || 1; tx /= tl; ty /= tl;
+    let nx = ty, ny = -tx;
+    if (pointInPoly([p[0] + nx * 0.8, p[1] + ny * 0.8], outline)) { nx = -nx; ny = -ny; }
+    const txt = labelFor(i);
+    const half = font * 0.3 * txt.length;               // half width of the number
+    const base = r + 0.5 + Math.max(font * 0.5, half);
+    let best = null, bestScore = -Infinity;
+    const need = font * 0.6;
+    outer: for (const k of [1, 1.3]) {
+      for (const da of [0, 25, -25, 50, -50, 80, -80, 115, -115, 150, -150, 180]) {
+        const c = Math.cos(da * D), s = Math.sin(da * D);
+        const vx = nx * c - ny * s, vy = nx * s + ny * c;
+        const dist = base * k + Math.abs(vx) * half * 0.4;
+        const q = [p[0] + vx * dist, p[1] + vy * dist];
+        let clear = Infinity;
+        for (let j = 0; j < dots.length; j++) if (j !== i) clear = Math.min(clear, Math.hypot(q[0] - dots[j][0], q[1] - dots[j][1]) - r - half * 0.6);
+        for (const l of labels) clear = Math.min(clear, Math.hypot((q[0] - l.x) * 0.8, q[1] - l.y) - font * 0.45);
+        for (const [s1, s2] of segs) clear = Math.min(clear, distSeg(q, s1, s2) - half * 0.5 + font * 0.15);
+        for (const o of obst) clear = Math.min(clear, Math.hypot(q[0] - o[0], q[1] - o[1]) - half * 0.5);
+        if (q[0] - half < 0.5 || q[0] + half > 99.5 || q[1] < 1.5 || q[1] > 98.5) clear -= 4;
+        const score = clear - Math.abs(da) * 0.006 - (k - 1) * 1.5;
+        if (clear >= need) { best = q; break outer; }
+        if (score > bestScore) { bestScore = score; best = q; }
+      }
+    }
+    labels.push({ x: best[0], y: best[1], t: txt });
+  });
+  let perim = 0; segs.forEach(([a, b]) => perim += Math.hypot(b[0] - a[0], b[1] - a[1]));
+  return { dots, labels, fit, font, r, spacing: perim / dots.length, n: dots.length, cornerMin: minDots(shape) };
+}
+
+/* ---------- SVG building ---------- */
+const INK = '#2a2f4a';
+const NUM_FONT = "Nunito,'Arial Rounded MT Bold','Helvetica Neue',Arial,sans-serif";
+const CJK_FONT = "'Chiron GoRound TC','PingFang TC','Microsoft JhengHei',sans-serif";
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const f2 = v => Math.round(v * 100) / 100;
+function mix(hex, t) { // blend hex toward white by t
+  const n = parseInt(hex.slice(1), 16), r = n >> 16, g = (n >> 8) & 255, b = n & 255;
+  const m = v => Math.round(v + (255 - v) * t).toString(16).padStart(2, '0');
+  return '#' + m(r) + m(g) + m(b);
+}
+function extrasSvg(shape, fit, { color = '#8a94b0', blush = '#ffb3c6', width = 0.55, opacity = 1 } = {}) {
+  if (!shape.extras) return '';
+  const sw = width / fit.s;
+  return `<g transform="translate(${f2(fit.tx)} ${f2(fit.ty)}) scale(${f2(fit.s)})" opacity="${opacity}">
+    <style>.x{fill:none;stroke:${color};stroke-width:${f2(sw)};stroke-linecap:round;stroke-linejoin:round}.xf{fill:${color};stroke:none}.xb{fill:${blush};stroke:none}.xw{fill:#fff;stroke:none}</style>
+    ${shape.extras}</g>`;
+}
+function gridSvg() {
+  let s = '<g stroke="#d5e2f3" stroke-width="0.15">';
+  for (let v = 0; v <= 100; v += 5) s += `<line x1="${v}" y1="0" x2="${v}" y2="100"/><line x1="0" y1="${v}" x2="100" y2="${v}"/>`;
+  return s + '</g>';
+}
+function puzzleInner(c, { answer, details, grid, numbers = true }) {
+  const { dots, labels, fit, font, r } = c;
+  let s = '';
+  if (grid) s += gridSvg();
+  if (details) s += extrasSvg(state.shape, fit);
+  if (answer) s += `<polygon points="${dots.map(p => f2(p[0]) + ',' + f2(p[1])).join(' ')}" fill="none" stroke="#ff6f96" stroke-width="0.35" stroke-linejoin="round" opacity="0.8"/>`;
+  const st = dots[0];
+  s += `<circle cx="${f2(st[0])}" cy="${f2(st[1])}" r="${f2(r * 2.4)}" fill="#fff3c4" stroke="#ff6f96" stroke-width="0.35"/>`;
+  s += `<g fill="${INK}">` + dots.map(p => `<circle cx="${f2(p[0])}" cy="${f2(p[1])}" r="${r}"/>`).join('') + '</g>';
+  if (numbers) {
+    s += `<g font-family="${NUM_FONT}" font-size="${font}" font-weight="800" text-anchor="middle" dominant-baseline="central" fill="${INK}" stroke="#fff" stroke-width="${f2(font * 0.24)}" paint-order="stroke" stroke-linejoin="round">`;
+    s += labels.map((l, i) => `<text x="${f2(l.x)}" y="${f2(l.y)}"${i === 0 ? ' fill="#e0507a"' : ''}>${esc(l.t)}</text>`).join('');
+    s += '</g>';
+  }
+  return s;
+}
+
+/* worksheet decoration motifs */
+function motif(type, x, y, s, fill, stroke) {
+  const common = `fill="${fill}" stroke="${stroke}" stroke-width="0.5" stroke-linejoin="round"`;
+  if (type === 'star') {
+    const p = []; for (let i = 0; i < 10; i++) { const r = i % 2 ? s * 0.42 : s, a = -90 * D + i * 36 * D; p.push(f2(x + r * Math.cos(a)) + ',' + f2(y + r * Math.sin(a))); }
+    return `<polygon points="${p.join(' ')}" ${common}/>`;
+  }
+  if (type === 'heart') {
+    return `<path d="M${x} ${y + s * 0.8} C${x - s * 1.2} ${y} ${x - s * 0.9} ${y - s * 0.9} ${x} ${y - s * 0.35} C${x + s * 0.9} ${y - s * 0.9} ${x + s * 1.2} ${y} ${x} ${y + s * 0.8} Z" ${common}/>`;
+  }
+  if (type === 'flower') {
+    let g = '';
+    for (let i = 0; i < 5; i++) { const a = -90 * D + i * 72 * D; g += `<circle cx="${f2(x + s * 0.55 * Math.cos(a))}" cy="${f2(y + s * 0.55 * Math.sin(a))}" r="${f2(s * 0.42)}" ${common}/>`; }
+    return g + `<circle cx="${x}" cy="${y}" r="${f2(s * 0.3)}" fill="#ffd84a" stroke="${stroke}" stroke-width="0.5"/>`;
+  }
+  return `<circle cx="${x}" cy="${y}" r="${f2(s * 0.45)}" ${common}/>`;
+}
+
+function sheetSvg(c) {
+  const first = labelFor(0), last = labelFor(c.n - 1);
+  const title = state.title.trim() || '連連看';
+  const col = state.shape.color, soft = mix(col, 0.72), softer = mix(col, 0.88);
+  const deco = state.deco, plain = deco === 'plain';
+  const m = (x, y, s, f = soft) => plain ? '' : motif(deco, x, y, s, f, INK);
+  const corners = plain ? '' : [m(14, 14, 5), m(196, 14, 5), m(14, 283, 5), m(196, 283, 5),
+    m(36, 23, 3, '#fff'), m(174, 23, 3, '#fff'), m(26, 32, 2), m(184, 32, 2)].join('');
+  // little side-trail of dots along the border, like a connect-the-dots path
+  let trail = '';
+  if (!plain) for (let i = 0; i < 9; i++) { trail += `<circle cx="9.5" cy="${60 + i * 21}" r="0.9" fill="${col}"/><circle cx="200.5" cy="${60 + i * 21}" r="0.9" fill="${col}"/>`; }
+  const tw = Math.min(140, 34 + title.length * 11.5);
+  const stars = [0, 1, 2].map(i => motif('star', 150 + i * 9, 266.4, 3.6, '#fff', INK)).join('');
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 210 297" width="210mm" height="297mm" font-family="${CJK_FONT}">
+  <rect width="210" height="297" fill="#ffffff"/>
+  <rect x="6" y="6" width="198" height="285" rx="12" fill="none" stroke="${plain ? '#d9e0ec' : col}" stroke-width="${plain ? 0.5 : 0.9}" ${plain ? '' : 'stroke-dasharray="0.1 2.6" stroke-linecap="round"'}/>
+  ${trail}${corners}
+  <path d="M${105 - tw / 2} 15 L${105 + tw / 2} 15 L${105 + tw / 2 - 5} 24 L${105 + tw / 2} 33 L${105 - tw / 2} 33 L${105 - tw / 2 + 5} 24 Z" fill="${soft}" stroke="${INK}" stroke-width="0.5" stroke-linejoin="round"/>
+  <text x="105" y="28.2" text-anchor="middle" font-size="12" font-weight="800" fill="${INK}" letter-spacing="1">${esc(title)}</text>
+  <g font-size="4.6" fill="${INK}">
+    <text x="22" y="45.5">姓名</text><line x1="33" y1="46.5" x2="108" y2="46.5" stroke="${INK}" stroke-width="0.3" stroke-dasharray="1 1"/>
+    <text x="118" y="45.5">日期</text><line x1="129" y1="46.5" x2="188" y2="46.5" stroke="${INK}" stroke-width="0.3" stroke-dasharray="1 1"/>
+  </g>
+  <rect x="14" y="52" width="182" height="182" rx="8" fill="${plain ? '#fff' : mix(col, 0.96)}" stroke="${plain ? '#dfe5ef' : soft}" stroke-width="0.6"/>
+  <g transform="translate(15 53) scale(1.8)">${puzzleInner(c, { answer: state.answer, details: state.details, grid: state.grid })}</g>
+  <rect x="22" y="239" width="166" height="17" rx="8.5" fill="${softer}"/>
+  <g font-size="4.4" fill="${INK}" text-anchor="middle">
+    <text x="105" y="246.2">從 <tspan fill="#e0507a" font-weight="800">${esc(first)}</tspan> 開始，依順序連到 <tspan font-weight="800">${esc(last)}</tspan>，最後再連回 <tspan fill="#e0507a" font-weight="800">${esc(first)}</tspan>。</text>
+    <text x="105" y="252.6" font-size="3.8">連好之後，猜猜看是什麼，再幫它塗上漂亮的顏色！</text>
+  </g>
+  <g font-size="4.2" fill="${INK}">
+    <text x="22" y="268">我覺得這是：</text><line x1="48" y1="269" x2="112" y2="269" stroke="${INK}" stroke-width="0.3" stroke-dasharray="1 1"/>
+    <text x="124" y="268">我給自己</text>
+    <text x="175" y="268">顆星</text>
+  </g>
+  ${stars}
+  <g font-size="3.2" fill="#8a94b0">
+    <text x="22" y="281">塗色建議</text>
+    <circle cx="39" cy="279.9" r="2.2" fill="${col}" stroke="${INK}" stroke-width="0.3"/>
+    <circle cx="45" cy="279.9" r="2.2" fill="${soft}" stroke="${INK}" stroke-width="0.3"/>
+    <circle cx="51" cy="279.9" r="2.2" fill="#ffb3c6" stroke="${INK}" stroke-width="0.3"/>
+    <text x="188" y="281" text-anchor="end">共 ${c.n} 個點</text>
+  </g>
+</svg>`;
+}
+
+/* ---------- library ---------- */
+const $ = id => document.getElementById(id);
+const grid = $('grid'), chips = $('chips');
+function thumbSvg(shape) {
+  const fit = fitOf(shape);
+  const pts = outlineOf(shape).pts.map(fit.map);
+  return `<svg viewBox="-2 -2 104 104" aria-hidden="true"><polygon points="${pts.map(p => f2(p[0]) + ',' + f2(p[1])).join(' ')}" fill="${mix(shape.color, 0.25)}" stroke="${INK}" stroke-width="2.4" stroke-linejoin="round"/>${extrasSvg(shape, fit, { color: INK, blush: '#ff8fab', width: 1.8 })}</svg>`;
+}
+function buildLibrary() {
+  chips.innerHTML = CATS.map(c => {
+    const n = c === '全部' ? SHAPES.length : SHAPES.filter(s => s.cat === c).length;
+    return `<button type="button" class="chip" data-cat="${c}" aria-pressed="${c === state.cat}">${c}<span class="n">${n}</span></button>`;
+  }).join('');
+  grid.innerHTML = SHAPES.map((s, i) => `<button type="button" class="tile" style="--tint:${s.color}" data-id="${s.id}" data-cat="${s.cat}" aria-pressed="false" title="${s.name}">
+      <span class="no">${String(i + 1).padStart(2, '0')}</span>${thumbSvg(s)}<span class="nm">${s.name}</span></button>`).join('');
+}
+function syncLibrary() {
+  chips.querySelectorAll('.chip').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.cat === state.cat)));
+  let count = 0;
+  grid.querySelectorAll('.tile').forEach(t => {
+    const show = state.cat === '全部' || t.dataset.cat === state.cat;
+    t.hidden = !show; if (show) count++;
+    t.setAttribute('aria-pressed', String(t.dataset.id === state.shape.id));
+  });
+  $('libCount').textContent = `${count} 種`;
+}
+
+let current = null;
+function render() {
+  current = compute();
+  const c = current;
+  $('dotsOut').textContent = c.n;
+  $('dots').value = Math.max(state.n, 10);
+  document.querySelectorAll('#presets button').forEach(b => b.setAttribute('aria-pressed', String(Number(b.dataset.n) === state.n)));
+  $('meta').innerHTML = `<b class="nm">${state.shape.name}</b> · 共 <b>${c.n}</b> 點 · <b>${esc(labelFor(0))}</b> → <b>${esc(labelFor(c.n - 1))}</b>`;
+  const w = $('warn');
+  if (c.n > state.n) { w.hidden = false; w.textContent = `「${state.shape.name}」有 ${c.cornerMin} 個轉角，至少需要 ${c.cornerMin} 個點。`; }
+  else if (c.spacing < c.font * 1.25) { w.hidden = false; w.textContent = '點有點密，數字可能會擠在一起。可以減少點數，或把字調小。'; }
+  else w.hidden = true;
+  $('sheet').innerHTML = sheetSvg(c);
+  syncLibrary();
+  if (state.mode === 'play') startPlay();
+  try { history.replaceState(null, '', '#' + state.shape.id); } catch (e) {}
+}
+
+/* ---------- play mode ---------- */
+let play = null, idleTimer = null;
+function startPlay() {
+  const c = current;
+  play = { next: 0, done: false };
+  const hitR = Math.max(1.6, Math.min(3.2, c.spacing * 0.48));
+  $('board').innerHTML = `<svg viewBox="0 0 100 100" id="playSvg">
+    ${state.grid ? gridSvg() : ''}
+    <polygon id="fillPoly" points="${c.dots.map(p => f2(p[0]) + ',' + f2(p[1])).join(' ')}" fill="${state.shape.color}" opacity="0" stroke="none"/>
+    <g id="detailLayer">${state.details ? extrasSvg(state.shape, c.fit) : ''}</g>
+    <polyline id="path" points="" fill="none" stroke="#ff6f96" stroke-width="0.7" stroke-linecap="round" stroke-linejoin="round"/>
+    <g id="playStatic">${puzzleInner(c, { answer: false, details: false, grid: false })}</g>
+    <circle id="pulse" r="${c.r * 1.7}" fill="#ffd84a" opacity="0" class="pulse"/>
+    <g id="hits">${c.dots.map((p, i) => `<circle class="hit" data-i="${i}" cx="${f2(p[0])}" cy="${f2(p[1])}" r="${f2(hitR)}" fill="transparent"/>`).join('')}</g>
+  </svg>`;
+  $('hits').addEventListener('pointerdown', e => {
+    const t = e.target.closest('.hit'); if (!t) return;
+    e.preventDefault(); tapDot(Number(t.dataset.i), t);
+  });
+  updatePlay();
+}
+function armIdleHint() {
+  clearTimeout(idleTimer);
+  idleTimer = setTimeout(() => { if (play && !play.done && state.mode === 'play') showHint(); }, 8000);
+}
+function updatePlay() {
+  const c = current;
+  const pts = c.dots.slice(0, play.next).map(p => f2(p[0]) + ',' + f2(p[1]));
+  if (play.done) pts.push(f2(c.dots[0][0]) + ',' + f2(c.dots[0][1]));
+  $('path').setAttribute('points', pts.join(' '));
+  $('nextLabel').textContent = play.done ? '完成' : labelFor(play.next);
+  $('progressBar').style.width = (play.done ? 100 : play.next / c.n * 100) + '%';
+  $('pulse').setAttribute('opacity', '0');
+  armIdleHint();
+}
+function tapDot(i, el) {
+  if (!play || play.done) return;
+  if (i === play.next) {
+    const dot = $('playStatic').querySelectorAll('g > circle')[i + 1];
+    if (dot) { dot.classList.remove('boop'); void dot.getBBox(); dot.classList.add('boop'); dot.setAttribute('fill', '#ff6f96'); }
+    play.next++;
+    if (play.next === current.n) finishPlay();
+    updatePlay();
+  } else {
+    el.setAttribute('stroke', '#ff6f96'); el.setAttribute('stroke-width', '0.3'); el.setAttribute('stroke-dasharray', '0.6 0.6');
+    setTimeout(() => el.removeAttribute('stroke'), 450);
+  }
+}
+function finishPlay() {
+  play.done = true;
+  clearTimeout(idleTimer);
+  const fp = $('fillPoly'); fp.setAttribute('opacity', '1'); fp.classList.add('reveal');
+  $('detailLayer').innerHTML = extrasSvg(state.shape, current.fit, { color: INK, blush: '#ff8fab', width: 0.7 });
+  $('playStatic').setAttribute('opacity', '0.18');
+  const card = document.createElement('div');
+  card.className = 'done-card';
+  card.innerHTML = `完成！是${esc(state.shape.name)} <button type="button">再玩一個</button>`;
+  card.querySelector('button').onclick = () => { const pool = SHAPES.filter(s => s !== state.shape); selectShape(pool[Math.floor(Math.random() * pool.length)].id); };
+  $('board').appendChild(card);
+  confetti();
+}
+function confetti() {
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const board = $('board'), cv = document.createElement('canvas');
+  const W = board.clientWidth, H = board.clientHeight, dpr = window.devicePixelRatio || 1;
+  cv.width = W * dpr; cv.height = H * dpr; board.appendChild(cv);
+  const ctx = cv.getContext('2d'); ctx.scale(dpr, dpr);
+  const cols = ['#ff6f96', '#ffd84a', '#4f8cff', '#5fd3a9', '#c08cf0', state.shape.color];
+  const ps = Array.from({ length: 90 }, () => ({ x: W / 2, y: H * 0.45, vx: (Math.random() - 0.5) * 9, vy: -Math.random() * 9 - 3,
+    r: 3 + Math.random() * 4, c: cols[Math.floor(Math.random() * cols.length)], rot: Math.random() * 6, vr: (Math.random() - 0.5) * 0.3, round: Math.random() < 0.4 }));
+  let t = 0;
+  (function frame() {
+    ctx.clearRect(0, 0, W, H);
+    ps.forEach(p => { p.vy += 0.25; p.vx *= 0.99; p.x += p.vx; p.y += p.vy; p.rot += p.vr;
+      ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot); ctx.fillStyle = p.c;
+      if (p.round) { ctx.beginPath(); ctx.arc(0, 0, p.r * 0.6, 0, 7); ctx.fill(); } else ctx.fillRect(-p.r / 2, -p.r / 4, p.r, p.r / 2);
+      ctx.restore(); });
+    if (++t < 130) requestAnimationFrame(frame); else cv.remove();
+  })();
+}
+function showHint() {
+  if (!play || play.done) return;
+  const p = current.dots[play.next], pu = $('pulse');
+  pu.setAttribute('cx', p[0]); pu.setAttribute('cy', p[1]); pu.setAttribute('opacity', '0.9');
+}
+$('hintBtn').onclick = showHint;
+$('undoBtn').onclick = () => {
+  if (!play || play.done || play.next === 0) return;
+  play.next--;
+  const dot = $('playStatic').querySelectorAll('g > circle')[play.next + 1];
+  if (dot) dot.removeAttribute('fill');
+  updatePlay();
+};
+$('restartBtn').onclick = () => startPlay();
+
+/* ---------- controls ---------- */
+function setMode(m) {
+  state.mode = m;
+  $('modeSheet').setAttribute('aria-pressed', String(m === 'sheet'));
+  $('modePlay').setAttribute('aria-pressed', String(m === 'play'));
+  $('sheetView').hidden = m !== 'sheet';
+  $('play').hidden = m !== 'play';
+  if (m === 'play') startPlay(); else clearTimeout(idleTimer);
+}
+$('modeSheet').onclick = () => setMode('sheet');
+$('modePlay').onclick = () => setMode('play');
+function selectShape(id) {
+  const s = SHAPES.find(x => x.id === id); if (!s) return;
+  state.shape = s; state.offset = 0; state.n = s.n;
+  render();
+}
+function pressOnly(container, btn) { container.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === btn))); }
+grid.addEventListener('click', e => { const t = e.target.closest('.tile'); if (t) selectShape(t.dataset.id); });
+chips.addEventListener('click', e => { const b = e.target.closest('.chip'); if (b) { state.cat = b.dataset.cat; syncLibrary(); } });
+$('randomBtn').onclick = () => {
+  const pool = SHAPES.filter(s => (state.cat === '全部' || s.cat === state.cat) && s !== state.shape);
+  selectShape(pool[Math.floor(Math.random() * pool.length)].id);
+};
+$('dots').addEventListener('input', e => { state.n = Number(e.target.value); render(); });
+$('presets').addEventListener('click', e => { const b = e.target.closest('button'); if (b) { state.n = Number(b.dataset.n); render(); } });
+$('labelMode').onchange = e => { state.labelMode = e.target.value; render(); };
+$('dirCw').onclick = () => { state.reverse = false; $('dirCw').setAttribute('aria-pressed', 'true'); $('dirCcw').setAttribute('aria-pressed', 'false'); render(); };
+$('dirCcw').onclick = () => { state.reverse = true; $('dirCw').setAttribute('aria-pressed', 'false'); $('dirCcw').setAttribute('aria-pressed', 'true'); render(); };
+$('shuffleStart').onclick = () => { state.offset += 3 + Math.floor(Math.random() * Math.max(1, current.n - 6)); render(); };
+$('sizes').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; state.size = b.dataset.size; pressOnly($('sizes'), b); render(); });
+$('decos').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; state.deco = b.dataset.deco; pressOnly($('decos'), b); render(); });
+$('showDetails').onchange = e => { state.details = e.target.checked; render(); };
+$('showAnswer').onchange = e => { state.answer = e.target.checked; render(); };
+$('showGrid').onchange = e => { state.grid = e.target.checked; render(); };
+$('title').addEventListener('input', e => { state.title = e.target.value; $('sheet').innerHTML = sheetSvg(current); });
+
+/* ---------- export ---------- */
+const inFrame = (() => { try { return window.self !== window.top; } catch (e) { return true; } })();
+if (inFrame) { $('exportBox').hidden = true; $('frameNote').hidden = false; }
+const fileBase = () => `連連看-${state.shape.name}-${current.n}點`;
+function download(blob, name) {
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+}
+$('printBtn').onclick = () => { setMode('sheet'); window.print(); };
+$('svgBtn').onclick = () => download(new Blob([sheetSvg(current)], { type: 'image/svg+xml' }), fileBase() + '.svg');
+$('pngBtn').onclick = () => {
+  const svg = sheetSvg(current).replace('width="210mm" height="297mm"', 'width="2480" height="3508"');
+  const img = new Image();
+  img.onload = () => {
+    const cv = document.createElement('canvas'); cv.width = 2480; cv.height = 3508;
+    const ctx = cv.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, cv.width, cv.height);
+    ctx.drawImage(img, 0, 0, cv.width, cv.height);
+    cv.toBlob(b => download(b, fileBase() + '.png'), 'image/png');
+  };
+  img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+};
+
+/* ---------- boot ---------- */
+buildLibrary();
+const fromHash = SHAPES.find(s => '#' + s.id === location.hash);
+if (fromHash) state.shape = fromHash;
+state.n = state.shape.n;
+render();
+window.__ctd = { SHAPES, state, selectShape, render, setMode, sheetSvg: () => sheetSvg(current), compute };
+})();
+</script>
+</body>
+</html>
