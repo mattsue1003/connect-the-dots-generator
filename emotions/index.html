@@ -170,6 +170,24 @@ button { font-family: inherit; color: inherit; border: 0; background: none; curs
 .cheer span { font-size: 120px; animation: cheer 1s ease forwards; }
 @keyframes cheer { 0% { transform: scale(.2); opacity: 0; } 30% { transform: scale(1.2); opacity: 1; } 100% { transform: scale(1) translateY(-40px); opacity: 0; } }
 
+/* 換圖片 */
+.img-list { display: grid; gap: 12px; }
+.img-row { background: var(--panel); border-radius: 20px; box-shadow: var(--shadow); padding: 12px; display: flex; gap: 12px; align-items: center; }
+.img-row .thumb { width: 84px; height: 84px; flex: none; border-radius: 14px; overflow: hidden; display: grid; place-items: center; background: var(--bg); }
+.img-row .thumb img, .img-row .thumb svg { width: 100%; height: 100%; object-fit: cover; }
+.img-row .thumb .emo { font-size: 30px; }
+.img-row .info { flex: 1; min-width: 0; }
+.img-row .info b { font-size: 18px; }
+.img-row .info p { margin: 2px 0 8px; font-size: 13px; color: var(--muted); line-height: 1.5; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.btns { display: flex; gap: 8px; flex-wrap: wrap; }
+.pill { font-size: 15px; font-weight: 800; padding: 9px 14px; border-radius: 999px; background: var(--line); }
+.pill.go { background: var(--ok); color: #fff; }
+.pill:active { transform: scale(.96); }
+.steps { background: var(--panel); border-radius: 20px; box-shadow: var(--shadow); padding: 14px 18px; margin-bottom: 14px; font-size: 16px; line-height: 1.8; }
+.steps ol { margin: 0 0 10px; padding-left: 1.3em; }
+.toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 10px 18px; border-radius: 999px; font-size: 16px; z-index: 10; }
+.section-h { font-size: 18px; font-weight: 800; margin: 16px 4px 8px; }
+
 /* 家長說明 */
 .parent { font-size: 17px; line-height: 1.8; background: var(--panel); border-radius: 24px; padding: 18px 20px; box-shadow: var(--shadow); user-select: text; -webkit-user-select: text; }
 .parent h2 { font-size: 20px; margin: 18px 0 6px; }
@@ -203,7 +221,7 @@ button { font-family: inherit; color: inherit; border: 0; background: none; curs
       <button class="tile t3" data-go="story" data-say="發生什麼事"><div class="pic"><span class="emoji-big">📖</span></div><div class="lbl">發生什麼事？</div></button>
       <button class="tile t4" data-go="mood" data-say="我的心情"><div class="pic"><span class="emoji-big">💗</span></div><div class="lbl">我的心情</div></button>
     </div>
-    <button class="parent-link" data-go="parent">給家長的使用說明</button>
+    <div style="display:flex;justify-content:center;gap:12px;flex-wrap:wrap"><button class="parent-link" data-go="parent">給家長的使用說明</button><button class="parent-link" data-go="images">🖼️ 換圖片（家長）</button></div>
   </section>
 
   <!-- 1. 認識表情 -->
@@ -247,6 +265,27 @@ button { font-family: inherit; color: inherit; border: 0; background: none; curs
     <div id="moodResult"></div>
   </section>
 
+  <!-- 換圖片 -->
+  <section class="screen" id="s-images">
+    <div class="steps">
+      <ol>
+        <li>按「開啟 ChatGPT」，先按「複製共同風格」貼上送出（讓每張圖的小男孩長得一樣）。</li>
+        <li>再到下面每一項按「複製 Prompt」，貼到同一個 ChatGPT 對話。</li>
+        <li>圖片生好後長按或右鍵「儲存圖片」，回來按「上傳」選那張圖。也可以直接用相機拍孩子做表情的照片。</li>
+      </ol>
+      <div class="btns">
+        <a class="pill go" href="https://chatgpt.com/" target="_blank" rel="noopener" style="text-decoration:none">開啟 ChatGPT ↗</a>
+        <button class="pill" id="copyStyle">📋 複製共同風格</button>
+      </div>
+      <p style="font-size:13px;color:var(--muted);margin:10px 0 0">上傳的圖片只存在這台裝置的這個瀏覽器裡，換手機或清除瀏覽資料就要重新上傳。</p>
+    </div>
+    <div class="section-h">表情（正方形）</div>
+    <div class="img-list" id="imgFaces"></div>
+    <div class="section-h">情境（橫式 4:3）</div>
+    <div class="img-list" id="imgScenes"></div>
+    <input type="file" accept="image/*" id="fileIn" hidden>
+  </section>
+
   <!-- 家長說明 -->
   <section class="screen" id="s-parent">
     <div class="parent">
@@ -268,7 +307,8 @@ button { font-family: inherit; color: inherit; border: 0; background: none; curs
       </ul>
       <h2>換成自己的圖片</h2>
       <ul>
-        <li>把圖片放在這個網頁旁邊的 <code>images/</code> 資料夾，檔名照 <code>PROMPTS.md</code> 列的命名（例如 <code>happy.png</code>、<code>scene-ice.png</code>），網頁會自動換成那張圖；沒有圖就用內建畫好的臉。</li>
+        <li>最簡單：首頁下方「🖼️ 換圖片」，可一鍵複製 ChatGPT Prompt，生好圖直接上傳。</li>
+        <li>或把圖片放在這個網頁旁邊的 <code>images/</code> 資料夾，檔名照 <code>PROMPTS.md</code> 列的命名（例如 <code>happy.png</code>、<code>scene-ice.png</code>），網頁會自動換成那張圖；沒有圖就用內建畫好的臉。</li>
         <li>也可以用孩子自己的表情照片（拍下孩子做開心、生氣的臉），對 3 歲孩子最有效。</li>
       </ul>
     </div>
@@ -325,7 +365,12 @@ function faceSVG(k) {
 }
 
 // 若 images/ 有同名圖片就用圖片，沒有就用 SVG
+// 家長上傳的圖存在 localStorage（縮小成 JPEG）
+function getCustom(id) { try { return localStorage.getItem("emoimg:" + id); } catch (e) { return null; } }
+function setCustom(id, data) { try { if (data) localStorage.setItem("emoimg:" + id, data); else localStorage.removeItem("emoimg:" + id); return true; } catch (e) { return false; } }
 function faceHTML(k) {
+  const c = getCustom(k);
+  if (c) return `<img src="${c}" alt="${EMO[k].name}">`;
   return `<img src="images/${k}.png" alt="${EMO[k].name}" onerror="this.parentNode.innerHTML=faceSVG('${k}')">`;
 }
 function fillFaces(root = document) {
@@ -388,7 +433,7 @@ function addStar() { stars++; $("#stars").textContent = "⭐ " + stars; cheer(st
 
 // ---------- 導覽 ----------
 const $ = s => document.querySelector(s);
-const TITLES = { home: "心情小怪獸", learn: "認識表情", find: "找一找", story: "發生什麼事？", mood: "我的心情", parent: "給家長" };
+const TITLES = { home: "心情小怪獸", learn: "認識表情", find: "找一找", story: "發生什麼事？", mood: "我的心情", parent: "給家長", images: "換圖片" };
 let timers = [];
 function clearTimers() { timers.forEach(clearTimeout); timers = []; }
 function go(name) {
@@ -401,6 +446,8 @@ function go(name) {
   if (name === "find") newFind();
   if (name === "story") newStory();
   if (name === "mood") initMood();
+  if (name === "images") initImages();
+  if (name === "home") fillFaces($("#s-home"));
   window.scrollTo(0, 0);
 }
 document.querySelectorAll("[data-go]").forEach(b => b.addEventListener("click", () => {
@@ -462,10 +509,15 @@ function newFind() {
 
 // ---------- 3. 發生什麼事 ----------
 let sceneOrder = [], sceneIdx = 0;
+function sceneHTML(s) {
+  const c = getCustom("scene-" + s.id);
+  if (c) return `<img src="${c}" alt="">`;
+  return `<img src="images/scene-${s.id}.png" alt="" onerror="this.parentNode.innerHTML='<div class=&quot;emo&quot;>${s.emo}</div>'">`;
+}
 function newStory() {
   if (!sceneOrder.length || sceneIdx >= sceneOrder.length) { sceneOrder = shuffle(SCENES); sceneIdx = 0; }
   const s = sceneOrder[sceneIdx++];
-  $("#sceneArt").innerHTML = `<img src="images/scene-${s.id}.png" alt="" onerror="this.parentNode.innerHTML='<div class=&quot;emo&quot;>${s.emo}</div>'">`;
+  $("#sceneArt").innerHTML = sceneHTML(s);
   $("#sceneStory").textContent = s.story;
   $("#sceneResult").innerHTML = "";
   const box = $("#sceneFaces");
@@ -576,6 +628,80 @@ function runTool(id) {
     stage(`<div style="font-size:110px">🙋</div><div class="sentence">👄 請 幫 我</div>`);
     say("事情做不到的時候，不用哭，可以說：請幫我。我們一起說一次：請，幫，我！", () => askAgain(3000));
   }
+}
+
+// ---------- 換圖片：ChatGPT Prompt + 上傳 ----------
+const STYLE_PROMPT = `接下來我要請你幫我畫一系列給 3 歲幼兒看的情緒教學圖卡。請全部維持同一個風格：
+- 主角是一個圓圓的、可愛的小男孩（約 3 歲，短黑髮，穿黃色上衣），每張都是同一個人
+- 扁平插畫、粗黑外框、明亮飽和的顏色、背景簡單乾淨
+- 表情要誇張、非常容易辨認
+- 圖片裡不要有任何文字、字母或數字
+請先回答「好」，我再一張一張告訴你要畫什麼。`;
+const FACE_PROMPTS = {
+  happy: "畫主角「開心」的臉部特寫：大大的笑容露出牙齒、眼睛笑成彎彎的月亮、臉頰紅紅的，背景淡黃色。正方形 1:1，臉部占畫面大部分，不要有文字。",
+  sad: "畫主角「難過」的臉部特寫：嘴角往下、眉毛內側往上、眼睛含淚、一顆眼淚流下來，背景淡藍色。正方形 1:1，臉部占畫面大部分，不要有文字。",
+  angry: "畫主角「生氣」的臉部特寫：眉毛往下皺成 V 字、嘴巴緊閉往下、臉紅紅的、雙手握拳，背景淡紅色。正方形 1:1，臉部占畫面大部分，不要有文字。",
+  scared: "畫主角「害怕」的臉部特寫：眼睛睜很大、眉毛往上、嘴巴微開發抖、雙手抱著自己、肩膀縮起來，背景淡紫色。正方形 1:1，臉部占畫面大部分，不要有文字。",
+  surprised: "畫主角「驚訝」的臉部特寫：眼睛睜很大、眉毛抬很高、嘴巴張成圓圓的 O 形、雙手張開，背景淡橘色。正方形 1:1，臉部占畫面大部分，不要有文字。",
+};
+const SCENE_PROMPTS = {
+  ice: "主角手上拿著空的甜筒，冰淇淋球掉在地上融化。",
+  blocks: "主角面前一座疊高的積木塔倒下來，積木散落一地。",
+  gift: "主角面前有一個綁著蝴蝶結的大禮物盒和生日蛋糕。",
+  thunder: "晚上窗外下大雨、閃電打雷，主角在房間裡看著窗戶。",
+  toy: "另一個小朋友從主角手中拿走他的玩具熊。",
+  balloon: "主角手上的氣球突然爆破，碎片飛散，畫出爆炸的線條。",
+  park: "晴天的公園，主角在溜滑梯上準備溜下來。",
+  lost: "人很多的商場裡，主角一個人站著，四周都是大人的腳，看不到媽媽。",
+  shoes: "主角坐在地上，用力想把鞋子穿上去，但穿不進去。",
+  puppy: "主角打開家門，一隻小狗突然跳出來。",
+};
+const sceneFull = id => `請畫一張情境圖：${SCENE_PROMPTS[id]}請畫成 4:3 橫式，主角表情不要太明顯（或畫側面、背面），讓小朋友自己猜心情，不要有文字。`;
+
+function toast(t) { const d = document.createElement("div"); d.className = "toast"; d.textContent = t; document.body.appendChild(d); setTimeout(() => d.remove(), 1800); }
+async function copyText(t) {
+  try { await navigator.clipboard.writeText(t); }
+  catch (e) { const a = document.createElement("textarea"); a.value = t; document.body.appendChild(a); a.select(); try { document.execCommand("copy"); } catch (_) {} a.remove(); }
+  toast("已複製，到 ChatGPT 貼上送出");
+}
+$("#copyStyle").onclick = () => copyText(STYLE_PROMPT);
+
+let uploadTarget = null;
+function resizeToDataURL(file, max) {
+  return new Promise((res, rej) => {
+    const url = URL.createObjectURL(file), im = new Image();
+    im.onload = () => {
+      const r = Math.min(1, max / Math.max(im.width, im.height));
+      const cv = document.createElement("canvas"); cv.width = Math.round(im.width * r); cv.height = Math.round(im.height * r);
+      const g = cv.getContext("2d"); g.fillStyle = "#fff"; g.fillRect(0, 0, cv.width, cv.height); g.drawImage(im, 0, 0, cv.width, cv.height);
+      URL.revokeObjectURL(url); res(cv.toDataURL("image/jpeg", 0.85));
+    };
+    im.onerror = () => { URL.revokeObjectURL(url); rej(); };
+    im.src = url;
+  });
+}
+$("#fileIn").addEventListener("change", async e => {
+  const f = e.target.files[0]; e.target.value = "";
+  if (!f || !uploadTarget) return;
+  try {
+    const data = await resizeToDataURL(f, 640);
+    if (setCustom(uploadTarget, data)) { toast("換好了！"); initImages(); } else toast("儲存空間不足，請先清除幾張圖");
+  } catch (_) { toast("這個檔案讀不出來，換一張試試"); }
+});
+
+function imgRow(id, title, prompt, thumb) {
+  const has = !!getCustom(id);
+  return `<div class="img-row"><div class="thumb">${thumb}</div><div class="info"><b>${title}</b>${has ? " ✅" : ""}<p>${prompt}</p>
+    <div class="btns"><button class="pill" data-copy="${id}">📋 複製 Prompt</button><button class="pill go" data-up="${id}">⬆️ 上傳</button>${has ? `<button class="pill" data-del="${id}">↩️ 還原</button>` : ""}</div></div></div>`;
+}
+function initImages() {
+  $("#imgFaces").innerHTML = EMO_KEYS.map(k => imgRow(k, EMO[k].name, FACE_PROMPTS[k], `<div class="pic" data-face="${k}" style="width:100%;height:100%"></div>`)).join("");
+  fillFaces($("#imgFaces"));
+  $("#imgScenes").innerHTML = SCENES.map(s => imgRow("scene-" + s.id, s.story, SCENE_PROMPTS[s.id], sceneHTML(s))).join("");
+  const promptOf = id => id.startsWith("scene-") ? sceneFull(id.slice(6)) : FACE_PROMPTS[id];
+  document.querySelectorAll("#s-images [data-copy]").forEach(b => b.onclick = () => copyText(promptOf(b.dataset.copy)));
+  document.querySelectorAll("#s-images [data-up]").forEach(b => b.onclick = () => { uploadTarget = b.dataset.up; $("#fileIn").click(); });
+  document.querySelectorAll("#s-images [data-del]").forEach(b => b.onclick = () => { setCustom(b.dataset.del, null); toast("已還原成內建圖"); initImages(); });
 }
 
 fillFaces();
