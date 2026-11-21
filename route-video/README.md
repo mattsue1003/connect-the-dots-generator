@@ -8,3 +8,9 @@
   - `render.js`：Playwright 逐格截圖，`node render.js 0-640 frames`，再用 ffmpeg 合成
 
 圖資：內政部國土測繪中心（電子地圖、正射影像）｜地形：Mapzen Terrain Tiles (AWS Open Data)｜路線：© OpenStreetMap contributors / OSRM
+
+## 配樂
+- `林口高中_到_桃園療養院_配樂版.mp4`：加入背景音樂的版本（建議上傳 YouTube 用這支）
+- `source/make_music.py`：背景音樂以程式自行合成（96 BPM、C 大調，C–G–Am–F），沒有使用任何第三方音源，無版權問題。
+  重新產生：`python3 source/make_music.py music.wav`，再用 ffmpeg 合成：
+  `ffmpeg -i 影片.mp4 -i music.wav -map 0:v -map 1:a -c:v copy -c:a aac -b:a 192k -af loudnorm=I=-16:TP=-1.5 -shortest 輸出.mp4`
