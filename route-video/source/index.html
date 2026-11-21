@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<title>林口高中到桃園療養院</title>
+<link rel="stylesheet" href="maplibre-gl.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@500;700;900&display=block">
+<style>
+  html,body{margin:0;width:1280px;height:720px;overflow:hidden;background:#dfe7ee;font-family:'Noto Sans TC',sans-serif}
+  #map{position:absolute;inset:0}
+  .maplibregl-ctrl-attrib,.maplibregl-ctrl-logo{display:none!important}
+  .ov{position:absolute;pointer-events:none;transition:none}
+  /* title */
+  #title{left:46px;top:40px}
+  #title .date{font-size:20px;font-weight:700;color:#333;letter-spacing:1px;text-shadow:0 0 6px #fff,0 0 3px #fff}
+  #title h1{margin:4px 0 8px;font-size:40px;font-weight:900;color:#111;letter-spacing:1px;
+    text-shadow:0 0 2px #fff,0 0 4px #fff,0 0 8px #fff,0 0 12px #fff}
+  #title .mode{font-size:21px;font-weight:700;color:#1e7a46;text-shadow:0 0 3px #fff,0 0 6px #fff}
+  /* status card */
+  #card{left:34px;top:30px;background:rgba(255,255,255,.93);border-radius:14px;padding:12px 18px 12px 18px;
+    box-shadow:0 4px 18px rgba(0,0,0,.18);min-width:128px}
+  #card .lab{font-size:16px;font-weight:700;color:#1e7a46}
+  #card .clock{font-size:44px;font-weight:700;color:#111;line-height:1.05;font-variant-numeric:tabular-nums;letter-spacing:.5px}
+  #card .km{font-size:16px;font-weight:500;color:#444}
+  #road{left:34px;top:178px;background:#1e7a46;color:#fff;border-radius:10px;padding:5px 14px;font-size:18px;font-weight:700;
+    box-shadow:0 3px 12px rgba(0,0,0,.18)}
+  #road.hwy{background:#0b5fa5}
+  /* elevation panel */
+  #elev{left:34px;bottom:40px;width:400px;height:160px;background:rgba(255,255,255,.90);border-radius:14px;
+    box-shadow:0 4px 18px rgba(0,0,0,.18)}
+  #elev .h{position:absolute;left:16px;top:12px;font-size:17px;font-weight:700;color:#222}
+  #elev .v{position:absolute;right:16px;top:10px;font-size:19px;font-weight:700;color:#e8590c}
+  #elev svg{position:absolute;left:14px;top:44px}
+  /* callout */
+  .callout{background:#fff;color:#111;font-size:17px;font-weight:700;padding:5px 13px;border-radius:9px;
+    box-shadow:0 3px 12px rgba(0,0,0,.25);white-space:nowrap;transform:translateY(-6px)}
+  /* waypoint label */
+  .wp{display:flex;align-items:center;gap:8px;pointer-events:none}
+  .wp .dot{width:12px;height:12px;border-radius:50%;background:#2fb36b;border:3px solid #fff;box-shadow:0 0 0 1.5px #1e7a46;flex:none}
+  .wp .txt{line-height:1.12}
+  .wp .n{font-size:25px;font-weight:900;color:#111;
+    text-shadow:0 0 2px #fff,0 0 3px #fff,0 0 5px #fff,0 0 8px #fff;white-space:nowrap}
+  .wp .s{font-size:16px;font-weight:700;color:#1e7a46;text-shadow:0 0 2px #fff,0 0 4px #fff,0 0 6px #fff;white-space:nowrap}
+  .wp.big .n{font-size:32px}
+  .wp.end .dot{background:#fff;border:4px solid #f06a12;box-shadow:0 0 0 2px #fff;width:12px;height:12px}
+  .lm{font-size:21px;font-weight:700;color:#fff;text-shadow:0 0 3px #000,0 0 6px rgba(0,0,0,.7);white-space:nowrap;
+    display:flex;flex-direction:column;align-items:center}
+  .lm i{display:block;width:2px;height:26px;background:rgba(255,255,255,.85);margin-top:2px}
+  /* car */
+  #car{width:110px;height:92px}
+  /* summary */
+  #summary{left:46px;top:40px;background:rgba(255,255,255,.95);border-radius:16px;padding:18px 24px;box-shadow:0 6px 24px rgba(0,0,0,.22)}
+  #summary .t{font-size:27px;font-weight:900;color:#1b2a22;margin-bottom:6px}
+  #summary .r{font-size:21px;font-weight:700;color:#2b2b2b;line-height:1.65}
+  #summary .r b{color:#0b5fa5}
+  #attrib{right:16px;bottom:10px;background:rgba(255,255,255,.88);font-size:12.5px;color:#333;padding:3px 10px;border-radius:4px}
+  #fade{position:absolute;inset:0;background:#fff;pointer-events:none;opacity:0}
+</style>
+</head>
+<body>
+<div id="map"></div>
+
+<div id="title" class="ov">
+  <div class="date">2026 / 11 / 21（六）</div>
+  <h1>林口高中 → 桃園療養院</h1>
+  <div class="mode">🚗 開車・國道1號 → 國道2號・約 20 km</div>
+</div>
+
+<div id="card" class="ov" style="opacity:0">
+  <div class="lab">🚗 開車</div>
+  <div class="clock" id="clock">07:30</div>
+  <div class="km" id="km">已行 0.0 km</div>
+</div>
+<div id="road" class="ov" style="opacity:0">仁愛路二段</div>
+
+<div id="elev" class="ov" style="opacity:0">
+  <div class="h">⛰ 海拔</div><div class="v" id="ev">251 m</div>
+  <svg width="372" height="104" viewBox="0 0 372 104">
+    <path id="eArea" fill="#cdeccf"/>
+    <path id="eDone" fill="#3cae55"/>
+    <circle id="eDot" r="6" fill="#f06a12" stroke="#fff" stroke-width="2.5"/>
+  </svg>
+</div>
+
+<div id="summary" class="ov" style="opacity:0">
+  <div class="t">07:57 抵達桃園療養院</div>
+  <div class="r">🚗 林口交流道 上 <b>國道1號</b>（往桃園）</div>
+  <div class="r">↪ 機場系統交流道 轉 <b>國道2號</b>（往桃園・東）</div>
+  <div class="r">⬇ 南桃園交流道下 → 中華路 → 龍壽街</div>
+  <div class="r" style="color:#555;font-size:18px">全程約 19.9 km・車程約 25–30 分鐘（依路況）</div>
+</div>
+
+<div id="attrib" class="ov">圖資：內政部國土測繪中心 ｜ 地形：Mapzen Terrain Tiles (AWS Open Data) ｜ 路線：© OpenStreetMap contributors / OSRM</div>
+<div id="fade"></div>
+
+<script src="maplibre-gl.js"></script>
+<script src="data.js"></script>
+<script>
+const FPS = 30;
+const R = window.ROUTE;
+const C = R.coords, CUM = R.cum, EL = R.elev, TOTAL = R.total;
+const T0 = 7*60+30;            // 07:30 depart
+const TSCALE = 1.3;            // OSRM free-flow time -> realistic
+const DRIVE_START = 4.5, DRIVE_END = 47.5, FIN_START = 49, END = 64;
+const NFRAMES = Math.round(END*FPS);
+
+// ---------- geometry helpers ----------
+function idxAt(d){ let lo=0,hi=CUM.length-1; while(hi-lo>1){const m=(lo+hi)>>1; if(CUM[m]<=d) lo=m; else hi=m;} return lo; }
+function pointAt(d){ d=Math.max(0,Math.min(TOTAL,d)); const i=idxAt(d); const j=Math.min(i+1,C.length-1);
+  const seg=CUM[j]-CUM[i]||1, f=(d-CUM[i])/seg; return [C[i][0]+(C[j][0]-C[i][0])*f, C[i][1]+(C[j][1]-C[i][1])*f]; }
+function elevAt(d){ d=Math.max(0,Math.min(TOTAL,d)); const i=idxAt(d), j=Math.min(i+1,C.length-1);
+  const seg=CUM[j]-CUM[i]||1, f=(d-CUM[i])/seg; return EL[i]+(EL[j]-EL[i])*f; }
+function bearingBetween(a,b){ const toR=Math.PI/180; const y=Math.sin((b[0]-a[0])*toR)*Math.cos(b[1]*toR);
+  const x=Math.cos(a[1]*toR)*Math.sin(b[1]*toR)-Math.sin(a[1]*toR)*Math.cos(b[1]*toR)*Math.cos((b[0]-a[0])*toR);
+  return Math.atan2(y,x)/toR; }
+function headingAt(d){ // vector average of look-ahead bearings
+  let sx=0, sy=0; for(const k of [150,300,500,750]){ const b=bearingBetween(pointAt(d), pointAt(d+k))*Math.PI/180; sx+=Math.sin(b); sy+=Math.cos(b);} return Math.atan2(sx,sy)*180/Math.PI; }
+// time of day at distance (from OSRM step times)
+function minutesAt(d){ for(const s of R.steps){ if(d<=s.d1||s===R.steps[R.steps.length-1]){ const f=s.d1>s.d0?Math.min(1,(d-s.d0)/(s.d1-s.d0)):1; return (s.t0+(s.t1-s.t0)*f)*TSCALE/60; } } }
+function clockAt(d){ const m=Math.round(T0+minutesAt(d)); return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0'); }
+const lerp=(a,b,t)=>a+(b-a)*t, clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
+const smooth=t=>{t=clamp(t,0,1);return t*t*(3-2*t);};
+const ease=t=>{t=clamp(t,0,1);return t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;};
+function piece(knots,x){ if(x<=knots[0][0]) return knots[0][1]; for(let i=1;i<knots.length;i++){ if(x<=knots[i][0]){const t=(x-knots[i-1][0])/(knots[i][0]-knots[i-1][0]); return lerp(knots[i-1][1],knots[i][1],t);} } return knots[knots.length-1][1]; }
+function angLerp(a,b,t){ let d=((b-a+540)%360)-180; return a+d*t; }
+
+// ---------- timeline: drive seconds -> distance ----------
+const DK=[[0,0],[6.5,1800],[22,12400],[30,15900],[36,17900],[43,TOTAL]];
+function distAtDrive(s){ s=clamp(s,0,43);
+  for(let i=1;i<DK.length;i++){ if(s<=DK[i][0]){ const t=(s-DK[i-1][0])/(DK[i][0]-DK[i-1][0]);
+    const e=0.45*t+0.55*smooth(t); return lerp(DK[i-1][1],DK[i][1],e);} } return TOTAL; }
+const ZK=[[0,15.5],[1500,15.1],[3600,14.0],[11300,14.0],[12400,14.7],[13600,14.3],[15300,14.4],[16400,15.2],[TOTAL,15.7]];
+
+// ---------- waypoints ----------
+const WPS=[
+  {d:0,      name:'林口高中', sub:()=>'07:30 出發', cls:'big start', side:'below'},
+  {d:1830,   name:'林口交流道', sub:()=>clockAt(1830)+'　'+Math.round(elevAt(1830))+' m'},
+  {d:12420,  name:'機場系統交流道', sub:()=>clockAt(12420)+'　'+Math.round(elevAt(12420))+' m'},
+  {d:15950,  name:'南桃園交流道', sub:()=>clockAt(15950)+'　'+Math.round(elevAt(15950))+' m'},
+  {d:17900,  name:'中華路', sub:()=>clockAt(17900)+'　'+Math.round(elevAt(17900))+' m'},
+  {d:TOTAL,  name:'桃園療養院', sub:()=>clockAt(TOTAL)+' 抵達', cls:'big end'},
+];
+const CALLOUTS=[
+  {d:1830,  txt:'上國道1號・往桃園'},
+  {d:4300,  txt:'林口台地下坡　250 m → 80 m', win:[2900,7600]},
+  {d:12420, txt:'機場系統交流道・轉國道2號（往桃園）'},
+  {d:15950, txt:'南桃園交流道下・往桃園'},
+  {d:17900, txt:'右轉中華路'},
+  {d:19650, txt:'右轉龍壽街', win:[19250,19680]},
+];
+function roadAt(d){
+  if(d<1800) return ['文化一路・往林口交流道',false];
+  if(d<2900) return ['林口交流道',true];
+  if(d<12400) return ['國道1號 中山高速公路（南下）',true];
+  if(d<13750) return ['機場系統交流道',true];
+  if(d<15900) return ['國道2號（東向）',true];
+  if(d<16700) return ['南桃園交流道',true];
+  if(d<17900) return ['大興西路三段・龍安街',false];
+  if(d<19600) return ['中華路',false];
+  return ['龍壽街',false];
+}
+
+// ---------- precompute camera per frame ----------
+const frames=[];
+{
+  const Dstart=DRIVE_START*FPS, Dend=DRIVE_END*FPS;
+  for(let f=0;f<NFRAMES;f++){
+    const t=f/FPS; let d;
+    if(t<DRIVE_START) d=0; else if(t<DRIVE_END) d=distAtDrive(t-DRIVE_START); else d=TOTAL;
+    frames.push({t,d,h:headingAt(Math.min(d,TOTAL-760))});
+  }
+  // smooth heading (unwrap + gaussian)
+  const un=[frames[0].h]; for(let i=1;i<frames.length;i++){ let a=frames[i].h, p=un[i-1]; while(a-p>180)a-=360; while(a-p<-180)a+=360; un.push(a); }
+  const sig=22, K=[]; for(let k=-60;k<=60;k++) K.push(Math.exp(-k*k/(2*sig*sig)));
+  for(let i=0;i<frames.length;i++){ let s=0,w=0; for(let k=-60;k<=60;k++){ const j=clamp(i+k,0,frames.length-1); s+=un[j]*K[k+60]; w+=K[k+60]; } frames[i].hs=s/w; }
+  // zoom smoothing on distance knots
+  for(const fr of frames) fr.z=piece(ZK,fr.d);
+  const zs=frames.map(f=>f.z); for(let i=0;i<frames.length;i++){ let s=0,w=0; for(let k=-30;k<=30;k++){const j=clamp(i+k,0,frames.length-1); const ww=Math.exp(-k*k/(2*12*12)); s+=zs[j]*ww; w+=ww;} frames[i].zs=s/w; }
+}
+const START_PT=C[0], END_PT=C[C.length-1];
+function cameraFor(f){
+  const fr=frames[f], t=fr.t;
+  const driveCam={center:pointAt(fr.d), zoom:fr.zs, pitch:62, bearing:fr.hs, padding:{top:230,bottom:0,left:0,right:0}};
+  if(t<DRIVE_START){
+    const k=ease(t/DRIVE_START);
+    const b0=driveCam.bearing-70;
+    return {center:START_PT, zoom:lerp(13.0,driveCam.zoom,k), pitch:lerp(52,62,k), bearing:angLerp(b0,driveCam.bearing,k), padding:{top:lerp(60,230,k),bottom:0,left:0,right:0}};
+  }
+  if(t<FIN_START) return driveCam;
+  // finale: pull back to overview and orbit
+  const k=ease((t-FIN_START)/5.5);
+  const last=frames[Math.round(FIN_START*FPS)-1];
+  const b1=lerp(last.hs, last.hs+ ( ((25-last.hs+540)%360)-180 ), 1); // target bearing ~25
+  const orbit=(t-FIN_START)*1.6;
+  return {center:[lerp(END_PT[0],121.322,k), lerp(END_PT[1],25.022,k)], zoom:lerp(last.zs,11.8,k), pitch:lerp(62,50,k),
+          bearing:lerp(last.hs,b1,k)+orbit*k, padding:{top:lerp(230,0,k),bottom:lerp(0,170,k),left:lerp(0,400,k),right:0}};
+}
+
+// ---------- map ----------
+const map=new maplibregl.Map({
+  container:'map', interactive:false, attributionControl:false, fadeDuration:0, preserveDrawingBuffer:true,
+  maxPitch:85, pixelRatio: window.devicePixelRatio, maxTileCacheSize:2000,
+  center:START_PT, zoom:13, pitch:52,
+  style:{version:8,
+    sources:{
+      emap:{type:'raster',tiles:['https://wmts.nlsc.gov.tw/wmts/EMAP/default/GoogleMapsCompatible/{z}/{y}/{x}'],tileSize:256,maxzoom:18},
+      photo:{type:'raster',tiles:['https://wmts.nlsc.gov.tw/wmts/PHOTO2/default/GoogleMapsCompatible/{z}/{y}/{x}'],tileSize:256,maxzoom:18},
+      dem:{type:'raster-dem',tiles:['https://elevation-tiles-prod.s3.amazonaws.com/terrarium/{z}/{x}/{y}.png'],encoding:'terrarium',tileSize:256,maxzoom:14},
+      demhs:{type:'raster-dem',tiles:['https://elevation-tiles-prod.s3.amazonaws.com/terrarium/{z}/{x}/{y}.png'],encoding:'terrarium',tileSize:256,maxzoom:14},
+      route:{type:'geojson',lineMetrics:true,data:{type:'Feature',geometry:{type:'LineString',coordinates:C}}}
+    },
+    layers:[
+      {id:'bg',type:'background',paint:{'background-color':'#eef1f3'}},
+      {id:'emap',type:'raster',source:'emap',paint:{'raster-fade-duration':0,'raster-saturation':-0.15}},
+      {id:'photo',type:'raster',source:'photo',paint:{'raster-fade-duration':0,'raster-opacity':0}},
+      {id:'hs',type:'hillshade',source:'demhs',paint:{'hillshade-exaggeration':0.3,'hillshade-shadow-color':'#5a6470','hillshade-highlight-color':'rgba(255,255,255,0.4)','hillshade-accent-color':'#7c8590'}},
+      {id:'ahead-case',type:'line',source:'route',layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#3a4650','line-width':7,'line-opacity':0.35}},
+      {id:'ahead',type:'line',source:'route',layout:{'line-join':'round'},paint:{'line-color':'#ffffff','line-width':4,'line-dasharray':[2,1.4]}},
+      {id:'done-glow',type:'line',source:'route',layout:{'line-cap':'round','line-join':'round'},paint:{'line-width':14,'line-blur':6,'line-gradient':['step',['line-progress'],'rgba(255,150,40,0.55)',0.0001,'rgba(0,0,0,0)']}},
+      {id:'done',type:'line',source:'route',layout:{'line-cap':'round','line-join':'round'},paint:{'line-width':6,'line-gradient':['step',['line-progress'],'#ff8a1e',0.0001,'rgba(0,0,0,0)']}},
+    ],
+    terrain:{source:'dem',exaggeration:1.35},
+    sky:{'sky-color':'#8fbfe9','horizon-color':'#e9eff4','fog-color':'#edf1f4','sky-horizon-blend':0.6,'horizon-fog-blend':0.7,'fog-ground-blend':0.85,'atmosphere-blend':0}
+  }
+});
+
+// ---------- DOM markers ----------
+function el(html){ const d=document.createElement('div'); d.innerHTML=html.trim(); return d.firstChild; }
+function wrap(inner){ const w=document.createElement('div'); w.style.pointerEvents='none'; w.appendChild(inner); return w; }
+const CAR_SVG=`<svg id="car" viewBox="0 0 110 92" xmlns="http://www.w3.org/2000/svg">
+ <ellipse cx="55" cy="84" rx="50" ry="7" fill="rgba(0,0,0,.28)"/>
+ <rect x="10" y="66" width="18" height="18" rx="4" fill="#1c1f24"/><rect x="82" y="66" width="18" height="18" rx="4" fill="#1c1f24"/>
+ <path d="M22 30 Q26 10 40 8 L70 8 Q84 10 88 30 Z" fill="#e9edf2" stroke="#9aa3ad" stroke-width="1.5"/>
+ <path d="M27 29 Q31 14 42 13 L68 13 Q79 14 83 29 Z" fill="#2b3a4a"/>
+ <path d="M31 27 Q34 17 43 16 L52 16 L40 27 Z" fill="rgba(255,255,255,.25)"/>
+ <path d="M6 40 Q8 30 22 28 L88 28 Q102 30 104 40 L104 70 Q104 76 98 76 L12 76 Q6 76 6 70 Z" fill="#f4f6f8" stroke="#9aa3ad" stroke-width="1.5"/>
+ <rect x="6" y="45" width="98" height="6" fill="#f06a12"/>
+ <rect x="9" y="36" width="22" height="9" rx="3" fill="#d7262b"/><rect x="79" y="36" width="22" height="9" rx="3" fill="#d7262b"/>
+ <rect x="12" y="38" width="8" height="5" rx="2" fill="#ff8f8f"/><rect x="90" y="38" width="8" height="5" rx="2" fill="#ff8f8f"/>
+ <rect x="39" y="55" width="32" height="12" rx="2" fill="#fff" stroke="#59616b" stroke-width="1.2"/>
+ <text x="55" y="64.5" font-size="8" text-anchor="middle" font-family="sans-serif" font-weight="700" fill="#333">LK-TY</text>
+ <rect x="10" y="70" width="90" height="5" rx="2" fill="#c9d0d7"/>
+</svg>`;
+const carEl=el(`<div style="pointer-events:none">${CAR_SVG}</div>`);
+const car=new maplibregl.Marker({opacity:'1',opacityWhenCovered:'1',element:wrap(carEl),anchor:'bottom',offset:[0,10]}).setLngLat(START_PT).addTo(map);
+
+const wpMarkers=WPS.map((w,i)=>{
+  const p=pointAt(w.d);
+  let e;
+  if(w.cls&&w.cls.includes('start')){
+    e=el(`<div class="wp big" style="flex-direction:column;gap:2px;align-items:center"><div class="dot"></div><div class="txt" style="text-align:center"><div class="n">${w.name}</div><div class="s" style="color:#e8590c">${w.sub()}</div></div></div>`);
+    return {w,e,m:new maplibregl.Marker({opacity:'1',opacityWhenCovered:'1',element:wrap(e),anchor:'top',offset:[0,-6]}).setLngLat(p).addTo(map)};
+  }
+  e=el(`<div class="wp ${w.cls||''}"><div class="dot"></div><div class="txt"><div class="n">${w.name}</div><div class="s">${w.sub()}</div></div></div>`);
+  return {w,e,m:new maplibregl.Marker({opacity:'1',opacityWhenCovered:'1',element:wrap(e),anchor:'left',offset:[-9,0]}).setLngLat(p).addTo(map)};
+});
+const coMarkers=CALLOUTS.map(c=>{ const e=el(`<div class="callout">${c.txt}</div>`); e.style.opacity=0;
+  return {c,e,m:new maplibregl.Marker({opacity:'1',opacityWhenCovered:'1',element:wrap(e),anchor:'bottom',offset:[0,-34]}).setLngLat(pointAt(c.d)).addTo(map)}; });
+const LMS=[
+  {n:'桃園國際機場',p:[121.2346,25.0793]},
+  {n:'桃園車站',p:[121.3136,24.9893]},
+];
+const lmMarkers=LMS.map(l=>{ const e=el(`<div class="lm">${l.n}<i></i></div>`); e.style.opacity=0;
+  return {e,m:new maplibregl.Marker({opacity:'1',opacityWhenCovered:'1',element:wrap(e),anchor:'bottom'}).setLngLat(l.p).addTo(map)}; });
+
+// ---------- elevation chart ----------
+const EW=372, EH=104, EMIN=40, EMAX=300;
+const ex=d=>d/TOTAL*EW, ey=e=>EH-(e-EMIN)/(EMAX-EMIN)*EH;
+function areaPath(dmax){ let s=`M0 ${EH} `; const N=160; for(let i=0;i<=N;i++){ const d=dmax*i/N; s+=`L${ex(d).toFixed(1)} ${ey(elevAt(d)).toFixed(1)} `;} return s+`L${ex(dmax).toFixed(1)} ${EH} Z`; }
+document.getElementById('eArea').setAttribute('d',areaPath(TOTAL));
+
+// ---------- per-frame render ----------
+const $=id=>document.getElementById(id);
+function op(x){return clamp(x,0,1).toFixed(3);}
+function applyFrame(f){
+  const fr=frames[f], t=fr.t, d=fr.d;
+  map.jumpTo(cameraFor(f));
+  const prog=Math.max(0.0001,d/TOTAL);
+  map.setPaintProperty('done','line-gradient',['step',['line-progress'],'#ff8a1e',prog,'rgba(0,0,0,0)']);
+  map.setPaintProperty('done-glow','line-gradient',['step',['line-progress'],'rgba(255,150,40,0.55)',prog,'rgba(0,0,0,0)']);
+  const fin=smooth((t-FIN_START)/2.5);
+  map.setPaintProperty('photo','raster-opacity',fin);
+  map.setPaintProperty('done','line-width',6+3*fin); map.setPaintProperty('done-glow','line-width',14+8*fin);
+  map.setPaintProperty('hs','hillshade-exaggeration',0.3*(1-fin)+0.1*fin);
+  map.setPaintProperty('ahead','line-opacity',1-smooth((t-DRIVE_END+1)/1));
+  map.setPaintProperty('ahead-case','line-opacity',0.35*(1-smooth((t-DRIVE_END+1)/1)));
+  car.setLngLat(pointAt(d));
+  carEl.style.opacity=op(1-smooth((t-FIN_START-0.3)/1.2));
+  // overlays
+  $('title').style.opacity=op(smooth(t/0.8)*(1-smooth((t-3.6)/0.9)));
+  const cardOn=smooth((t-4.0)/0.7)*(1-smooth((t-FIN_START+0.5)/1));
+  $('card').style.opacity=op(cardOn); $('road').style.opacity=op(cardOn); $('elev').style.opacity=op(cardOn);
+  $('clock').textContent=clockAt(d); $('km').textContent='已行 '+(d/1000).toFixed(1)+' km';
+  const [rn,hw]=roadAt(d); $('road').textContent=rn; $('road').className='ov'+(hw?' hwy':'');
+  $('ev').textContent=Math.round(elevAt(d))+' m';
+  $('eDone').setAttribute('d',areaPath(Math.max(1,d)));
+  $('eDot').setAttribute('cx',ex(d)); $('eDot').setAttribute('cy',ey(elevAt(d)));
+  // callouts: show when near
+  for(const c of coMarkers){
+    const w=c.c.win||[c.c.d-900,c.c.d+250];
+    let o=0; if(t>=DRIVE_START&&t<FIN_START){ o=smooth((d-w[0])/250)*(1-smooth((d-w[1])/200)); }
+    c.e.style.opacity=op(o);
+    if(c.c.win) c.m.setLngLat(pointAt(clamp(d,w[0],w[1])));
+  }
+  // waypoint labels: visible once approaching (within 3.5 km ahead) or passed, all in finale
+  for(const m of wpMarkers){
+    let o; if(t>=FIN_START) o=(m.w.d===1830||m.w.d===17900)?1-smooth((t-FIN_START)/1):1; else o=smooth((d-(m.w.d-4500))/500);
+    if(m.w.d===0) o=1;
+    m.e.style.opacity=op(o);
+  }
+  for(const l of lmMarkers) l.e.style.opacity=op(smooth((t-FIN_START-3)/1));
+  $('summary').style.opacity=op(smooth((t-FIN_START-5)/1));
+  $('attrib').textContent = t>=FIN_START+1 ? '航照：內政部國土測繪中心 ｜ 地形：Mapzen Terrain Tiles (AWS Open Data) ｜ 路線：© OpenStreetMap contributors / OSRM'
+                                            : '圖資：內政部國土測繪中心 ｜ 地形：Mapzen Terrain Tiles (AWS Open Data) ｜ 路線：© OpenStreetMap contributors / OSRM';
+  $('fade').style.opacity=op(1-smooth(t/0.5));
+}
+function waitIdle(timeout=20000){ return new Promise(res=>{ let done=false; const fin=()=>{if(!done){done=true;res();}};
+  map.once('idle',fin); setTimeout(fin,timeout); map.triggerRepaint(); }); }
+window.NFRAMES=NFRAMES;
+window.renderFrame=async f=>{ applyFrame(f); await waitIdle(); await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))); return true; };
+window.ready=new Promise(res=>map.on('load',async()=>{ await document.fonts.load('900 30px "Noto Sans TC"','林口高中桃園療養院'); await document.fonts.load('700 20px "Noto Sans TC"','開車已行'); await document.fonts.ready; applyFrame(0); await waitIdle(); res(true); }));
+// preview mode: realtime playback
+if(!location.search.includes('render')){ map.on('load',()=>{ const st=performance.now(); (function loop(){ const f=Math.min(NFRAMES-1,Math.floor((performance.now()-st)/1000*FPS)); applyFrame(f); if(f<NFRAMES-1) requestAnimationFrame(loop); })(); }); }
+</script>
+</body>
+</html>
